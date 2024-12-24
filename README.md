@@ -18,4 +18,4 @@ El sistema de novedades está diseñado para facilitar la gestión de informaci�
 - **Backend**: NestJS, TypeORM, PostgreSQL
 - **Frontend**: Angular
 - **Base de Datos**: PostgreSQL
-- **Otros**: [cualquier otra tecnología que estés utilizando, como JWT para autenticación, etc.]
+
