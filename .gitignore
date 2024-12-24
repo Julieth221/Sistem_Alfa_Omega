@@ -1,0 +1,72 @@
+# Ignorar la carpeta node_modules en ambos proyectos
+backend/node_modules/
+frontend/node_modules/
+
+# Ignorar archivos de entorno
+backend/.env
+frontend/.env
+backend/.env.development.local
+backend/.env.test.local
+backend/.env.production.local
+backend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/.env.local
+
+# Ignorar archivos de log
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Ignorar la salida compilada y otros archivos temporales
+/backend/dist
+/backend/tmp
+/backend/out-tsc
+/backend/bazel-out
+/frontend/dist
+/frontend/tmp
+/frontend/out-tsc
+/frontend/bazel-out
+
+# Logs
+logs
+
+# OS
+.DS_Store
+
+# Tests
+/coverage
+/.nyc_output
+
+# IDEs y editores
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Temp directory
+.temp
+.tmp
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
