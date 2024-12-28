@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HeaderComponent, EmailPreviewComponent } from './components';
+import { HeaderComponent } from './components/header/header.component';
+import { HomeComponent } from './components/home/home.component';
 
 @Component({
   selector: 'app-root',
@@ -8,19 +9,12 @@ import { HeaderComponent, EmailPreviewComponent } from './components';
   imports: [
     CommonModule,
     HeaderComponent,
-    EmailPreviewComponent
+    HomeComponent
   ],
   template: `
     <app-header></app-header>
-    <main>
-      <app-email-preview></app-email-preview>
-    </main>
-  `,
-  styles: [`
-    main {
-      padding: 20px;
-    }
-  `]
+    <app-home></app-home>
+  `
 })
 export class AppComponent {
   title = 'ALFA Y OMEGA ENCHAPES Y ACABADOS S.A.S.';
