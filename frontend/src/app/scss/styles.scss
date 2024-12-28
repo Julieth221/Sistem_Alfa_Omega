@@ -1,5 +1,5 @@
 // Base
-@use 'base/variables';
+@use 'base/variables' as v;
 @use 'base/typography';
 @use 'base/reset';
 
@@ -13,17 +13,17 @@
 
 // Estilos globales
 body {
-  font-family: variables.$font-family-base;
-  font-size: variables.$font-size-base;
-  line-height: variables.$line-height-base;
-  color: variables.$text-color;
+  font-family: v.$font-family-base;
+  font-size: v.$font-size-base;
+  line-height: v.$line-height-base;
+  color: v.$text-color;
   background-color: white;
 }
 
 .container {
-  max-width: variables.$breakpoint-lg;
+  max-width: v.$breakpoint-lg;
   margin: 0 auto;
-  padding: 0 variables.$container-padding;
+  padding: 0 v.$container-padding;
 }
 
 // Font Awesome
