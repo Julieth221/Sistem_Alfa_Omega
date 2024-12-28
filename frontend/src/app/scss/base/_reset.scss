@@ -1,4 +1,6 @@
-/* Reset básico de estilos del navegador*/
+@use 'variables' as v;
+
+/* Reset básico */
 *,
 *::before,
 *::after {
@@ -9,7 +11,7 @@
 
 body {
   margin: 0;
-  font-family: $font-primary;
+  font-family: v.$font-family-base;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
