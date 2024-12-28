@@ -1,7 +1,9 @@
 // Components
-@import 'components/header';
-@import 'components/email-preview';
-@import 'components/home';
+@use 'components/header';
+@use 'components/email-preview';
+@use 'components/home';
+@use 'components/login';
+@use 'components/dashboard';
 
 // Estilos globales
 body {
@@ -12,7 +14,4 @@ body {
   background-color: white;
   margin: 0;
   padding: 0;
-}
-
-// Font Awesome
-@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css'); 
+} 

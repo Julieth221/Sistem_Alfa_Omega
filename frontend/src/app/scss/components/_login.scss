@@ -1,0 +1,141 @@
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #016165 0%, #024345 100%);
+  padding: 2rem;
+
+  .login-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    width: 100%;
+    max-width: 400px;
+    animation: slideIn 0.5s ease-out;
+
+    .login-logo {
+      width: 200px;
+      margin: 0 auto 1rem;
+      display: block;
+    }
+
+    h2 {
+      text-align: center;
+      color: #016165;
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #333;
+        font-weight: 500;
+      }
+
+      input {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        border: 2px solid #e1e1e1;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+
+        &:focus {
+          border-color: #016165;
+          outline: none;
+          box-shadow: 0 0 0 3px rgba(1,97,101,0.1);
+        }
+
+        &.error {
+          border-color: #ff4444;
+        }
+      }
+
+      .password-input {
+        position: relative;
+
+        i {
+          position: absolute;
+          right: 1rem;
+          top: 50%;
+          transform: translateY(-50%);
+          cursor: pointer;
+          color: #666;
+        }
+      }
+
+      .error-message {
+        color: #ff4444;
+        font-size: 0.8rem;
+        margin-top: 0.5rem;
+      }
+    }
+
+    button {
+      width: 100%;
+      padding: 1rem;
+      background: #016165;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background: #024345;
+      }
+
+      &:disabled {
+        background: #cccccc;
+        cursor: not-allowed;
+      }
+
+      i {
+        margin-right: 8px;
+      }
+    }
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+} 
+// Responsive
+@media (max-width: 480px) {
+    .login-container {
+      padding: 1rem;
+  
+      .login-card {
+        .login-header {
+          padding: 1.5rem;
+  
+          .logo {
+            width: 150px;
+          }
+  
+          h2 {
+            font-size: 1.2rem;
+          }
+        }
+  
+        .login-form {
+          padding: 1.5rem;
+        }
+      }
+    }
+  }
