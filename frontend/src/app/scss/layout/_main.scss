@@ -1,0 +1,22 @@
+.main-content {
+  min-height: calc(100vh - 60px); // Ajusta según la altura de tu header
+  padding: 20px;
+  
+  @media (min-width: $breakpoint-md) {
+    padding: 40px;
+  }
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 15px;
+}
+
+.section {
+  margin-bottom: 40px;
+  
+  @media (min-width: $breakpoint-md) {
+    margin-bottom: 80px;
+  }
+} 
