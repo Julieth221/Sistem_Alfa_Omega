@@ -33,7 +33,7 @@
   }
 
   .services {
-    padding: 4rem $container-padding;
+    padding: 4rem v.$container-padding;
     background-color: white;
 
     h2 {
@@ -46,7 +46,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 2rem;
-      max-width: $breakpoint-lg;
+      max-width: v.$breakpoint-lg;
       margin: 0 auto;
 
       .service-card {
@@ -73,7 +73,7 @@
         }
 
         p {
-          color: $text-color;
+          color: v.$text-color;
           line-height: 1.6;
         }
       }

@@ -5,20 +5,20 @@
   padding: v.$spacing-unit;
   border: 1px solid color.adjust(v.$background-color, $lightness: -10%);
   border-radius: 4px;
-  margin: $spacing-unit 0;
+  margin: v.$spacing-unit 0;
 
   h3 {
-    margin-bottom: $spacing-unit;
-    color: $text-color;
+    margin-bottom: v.$spacing-unit;
+    color: v.$text-color;
   }
 
   .actions {
-    margin-top: $spacing-unit;
+    margin-top: v.$spacing-unit;
     display: flex;
-    gap: $spacing-unit;
+    gap: v.$spacing-unit;
 
     button {
-      padding: $spacing-unit/2 $spacing-unit;
+      padding: calc(v.$spacing-unit / 2) v.$spacing-unit;
       border: none;
       border-radius: 4px;
       cursor: pointer;
