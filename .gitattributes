@@ -1,1 +1,18 @@
- 
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# JS/TS files
+*.js text eol=lf
+*.ts text eol=lf
+*.json text eol=lf
+
+# SCSS files
+*.scss text eol=lf
+
+# HTML files
+*.html text eol=lf
+
+# Config files
+*.yml text eol=lf
+*.yaml text eol=lf
+*.conf text eol=lf 
