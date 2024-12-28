@@ -1,8 +1,8 @@
-@import '../base/variables';
+@use '../base/variables' as v;
 
 header {
-  padding: $spacing-unit;
-  background-color: $background-color;
+  padding: v.$spacing-unit;
+  background-color: v.$background-color;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 
   h1 {

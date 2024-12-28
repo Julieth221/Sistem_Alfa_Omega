@@ -1,8 +1,9 @@
-@import '../base/variables';
+@use '../base/variables' as v;
+@use 'sass:color';
 
 .email-preview {
-  padding: $spacing-unit;
-  border: 1px solid darken($background-color, 10%);
+  padding: v.$spacing-unit;
+  border: 1px solid color.adjust(v.$background-color, $lightness: -10%);
   border-radius: 4px;
   margin: $spacing-unit 0;
 
