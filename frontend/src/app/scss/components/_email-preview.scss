@@ -1,0 +1,45 @@
+@import '../base/variables';
+
+.email-preview {
+  padding: $spacing-unit;
+  border: 1px solid darken($background-color, 10%);
+  border-radius: 4px;
+  margin: $spacing-unit 0;
+
+  h3 {
+    margin-bottom: $spacing-unit;
+    color: $text-color;
+  }
+
+  .actions {
+    margin-top: $spacing-unit;
+    display: flex;
+    gap: $spacing-unit;
+
+    button {
+      padding: $spacing-unit/2 $spacing-unit;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+
+      &:first-child {
+        background-color: $primary-color;
+        color: white;
+
+        &:hover {
+          background-color: darken($primary-color, 10%);
+        }
+      }
+
+      &:last-child {
+        background-color: $secondary-color;
+        color: white;
+
+        &:hover {
+          background-color: darken($secondary-color, 10%);
+        }
+      }
+    }
+  }
+} 

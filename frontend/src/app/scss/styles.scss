@@ -1,0 +1,30 @@
+// Base
+@use 'base/variables';
+@use 'base/typography';
+@use 'base/reset';
+
+// Layout
+@use 'layout/main';
+
+// Components
+@use 'components/header';
+@use 'components/email-preview';
+@use 'components/home';
+
+// Estilos globales
+body {
+  font-family: variables.$font-family-base;
+  font-size: variables.$font-size-base;
+  line-height: variables.$line-height-base;
+  color: variables.$text-color;
+  background-color: white;
+}
+
+.container {
+  max-width: variables.$breakpoint-lg;
+  margin: 0 auto;
+  padding: 0 variables.$container-padding;
+}
+
+// Font Awesome
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css'); 
