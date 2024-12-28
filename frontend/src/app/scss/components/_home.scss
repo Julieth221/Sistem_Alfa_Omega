@@ -1,11 +1,9 @@
-@use '../base/variables' as v;
-
 .home {
   .hero {
     background-color: #016165;
     color: white;
     text-align: center;
-    padding: 4rem v.$spacing-unit;
+    padding: 4rem 1rem;
     position: relative;
 
     .logo-container {
@@ -33,7 +31,7 @@
   }
 
   .services {
-    padding: 4rem v.$container-padding;
+    padding: 4rem 20px;
     background-color: white;
 
     h2 {
@@ -46,7 +44,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 2rem;
-      max-width: v.$breakpoint-lg;
+      max-width: 1200px;
       margin: 0 auto;
 
       .service-card {
@@ -73,7 +71,7 @@
         }
 
         p {
-          color: v.$text-color;
+          color: #333;
           line-height: 1.6;
         }
       }
