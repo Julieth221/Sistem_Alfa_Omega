@@ -1,21 +1,19 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config'; // Importa ConfigModule
-import { databaseConfig } from './config/database.config'; // Importa la configuración de la base de datos
-import { UsersModule } from './users/users.module'; // Importa el módulo de usuarios
-import { MailModule } from './mail/mail.module';
+import { AuthModule } from './auth/auth.module';
+import { databaseConfig } from './config/database.config';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(), // Carga las variables de entorno
-    TypeOrmModule.forRoot(databaseConfig), // Conectar a la base de datos
-    UsersModule, // Importa tu módulo de usuarios
-    MailModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    TypeOrmModule.forRoot(databaseConfig),
+    AuthModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}
 
