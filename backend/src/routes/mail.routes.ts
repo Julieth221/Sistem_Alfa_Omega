@@ -4,18 +4,15 @@ import { MailController } from '../controllers/mail.controller';
 export const mailRoutes: Routes = [
   {
     path: 'mail',
-    module: MailController,
     children: [
       {
-        path: 'preview',
-        method: 'post',
-        handler: 'previewEmail',
+        path: 'send-novedad',
+        module: MailController,
       },
       {
-        path: 'send',
-        method: 'post',
-        handler: 'sendEmail',
-      },
-    ],
-  },
+        path: 'preview',
+        module: MailController,
+      }
+    ]
+  }
 ]; 
