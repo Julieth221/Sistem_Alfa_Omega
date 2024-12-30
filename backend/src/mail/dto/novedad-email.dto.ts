@@ -1,6 +1,10 @@
-export interface NovedadEmailDto {
-  to: string;
-  productos: Array<{
+export class NovedadEmailDto {
+  to!: string;
+  subject!: string;
+  numeroRemision!: string;
+  fecha!: Date;
+  nombreUsuario!: string;
+  productos!: {
     referencia: string;
     cantidad_m2?: boolean;
     cantidad_cajas?: boolean;
@@ -14,11 +18,8 @@ export interface NovedadEmailDto {
     otro?: boolean;
     descripcion?: string;
     accion_realizada?: string;
-  }>;
-  nombreUsuario: string;
-  fecha: Date;
-  attachments?: Array<{
-    filename: string;
-    path: string;
-  }>;
+    foto_remision?: string;
+  }[];
+  diligenciado_por!: string;
+  correo!: string;
 } 
