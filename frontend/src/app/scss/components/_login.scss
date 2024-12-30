@@ -27,9 +27,11 @@
       margin-bottom: 1rem;
       font-weight: 600;
     }
+    
 
     .form-group {
       margin-bottom: 1.5rem;
+      padding-right: 1.5rem;
 
       label {
         display: block;
@@ -40,16 +42,14 @@
 
       input {
         width: 100%;
-        padding: 0.8rem 1rem;
+        padding: 0.8rem;
         border: 2px solid #e1e1e1;
         border-radius: 8px;
-        font-size: 1rem;
         transition: border-color 0.3s ease;
 
         &:focus {
           border-color: #016165;
           outline: none;
-          box-shadow: 0 0 0 3px rgba(1,97,101,0.1);
         }
 
         &.error {
@@ -124,7 +124,7 @@
         .login-header {
           padding: 1.5rem;
   
-          .logo {
+          .logo2 {
             width: 150px;
           }
   
