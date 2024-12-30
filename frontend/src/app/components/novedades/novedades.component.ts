@@ -13,6 +13,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { PreviewPdfComponent } from './preview-pdf.component';
 import { NovedadesService } from '../../services/novedades.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-novedades',
@@ -53,7 +54,7 @@ import { NovedadesService } from '../../services/novedades.service';
         <div formArrayName="productos">
           <div *ngFor="let producto of productos.controls; let i=index" [formGroupName]="i">
             <div class="producto-container">
-              <mat-form-field>
+              <mat-form-field class="referencia-field">
                 <mat-label>Referencia del producto</mat-label>
                 <input matInput formControlName="referencia">
               </mat-form-field>
@@ -76,18 +77,20 @@ import { NovedadesService } from '../../services/novedades.service';
                 <mat-checkbox formControlName="otro">Otro</mat-checkbox>
               </div>
 
-              <mat-form-field>
-                <mat-label>Descripción</mat-label>
-                <textarea matInput formControlName="descripcion"></textarea>
-              </mat-form-field>
+              <div class="descripcion-accion-container">
+                <mat-form-field class="descripcion-field">
+                  <mat-label>Descripción</mat-label>
+                  <textarea matInput formControlName="descripcion" rows="5"></textarea>
+                </mat-form-field>
 
-              <mat-form-field>
-                <mat-label>Acción Realizada</mat-label>
-                <mat-select formControlName="accion_realizada">
-                  <mat-option value="rechazado_devuelto">Rechazado y Devuelto</mat-option>
-                  <mat-option value="rechazado_descargado">Rechazado y Descargado</mat-option>
-                </mat-select>
-              </mat-form-field>
+                <mat-form-field class="accion-field">
+                  <mat-label>Acción Realizada</mat-label>
+                  <mat-select formControlName="accion_realizada">
+                    <mat-option value="rechazado_devuelto">Rechazado y Devuelto</mat-option>
+                    <mat-option value="rechazado_descargado">Rechazado y Descargado</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
 
               <div class="file-upload">
                 <label>Anexar Remisión</label>
@@ -102,19 +105,25 @@ import { NovedadesService } from '../../services/novedades.service';
         </button>
 
         <div class="form-footer">
-          <mat-form-field>
-            <mat-label>Diligenciado por</mat-label>
-            <input matInput formControlName="diligenciado_por">
-          </mat-form-field>
+          <div class="datos-contacto">
+            <mat-form-field>
+              <mat-label>Diligenciado por</mat-label>
+              <input matInput formControlName="diligenciado_por">
+            </mat-form-field>
 
-          <div class="firma-digital">
-            <img [src]="firmaDigitalUrl" alt="Firma digital">
+            <mat-form-field>
+              <mat-label>Correo electrónico</mat-label>
+              <input matInput formControlName="correo" type="email">
+            </mat-form-field>
           </div>
 
-          <mat-form-field>
-            <mat-label>Correo electrónico</mat-label>
-            <input matInput formControlName="correo" type="email">
-          </mat-form-field>
+          <div class="firma-digital">
+            <label>Firma Digital</label>
+            <div class="firma-placeholder" [class.has-image]="firmaDigitalUrl">
+              <img *ngIf="firmaDigitalUrl" src="assets/images/FirmaDigital.png" alt="Firma digital">
+              <span *ngIf="!firmaDigitalUrl">Haga clic para agregar firma</span>
+            </div>
+          </div>
         </div>
 
         <div class="actions">
@@ -135,7 +144,8 @@ export class NovedadesComponent implements OnInit {
     private fb: FormBuilder,
     private dialog: MatDialog,
     private novedadesService: NovedadesService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private router: Router
   ) {}
 
   ngOnInit() {
@@ -183,8 +193,33 @@ export class NovedadesComponent implements OnInit {
     // Aquí iría la lógica para manejar el archivo
   }
 
-  generarNumeroRemision() {
-    // Aquí iría la lógica para generar el número FNAO####
+  async generarNumeroRemision() {
+    try {
+      // Obtener el último número de remisión de la base de datos
+      const ultimaRemision = await this.novedadesService.getUltimaRemision().toPromise();
+      
+      if (ultimaRemision) {
+        // Extraer el número y aumentarlo en 1
+        const numeroActual = parseInt(ultimaRemision.numero_remision.split('FNAO')[1]);
+        this.numeroRemision = `FNAO${(numeroActual + 1).toString().padStart(4, '0')}`;
+      } else {
+        // Si no hay remisiones previas, empezar con FNAO0001
+        this.numeroRemision = 'FNAO0001';
+      }
+    } catch (error: any) {
+      console.error('Error al generar número de remisión:', error);
+      
+      if (error.status === 401) {
+        this.snackBar.open('Sesión expirada. Por favor, inicie sesión nuevamente', 'Cerrar', {
+          duration: 5000
+        });
+        this.router.navigate(['/login']);
+      } else {
+        this.snackBar.open('Error al generar número de remisión', 'Cerrar', {
+          duration: 3000
+        });
+      }
+    }
   }
 
   onSubmit() {
