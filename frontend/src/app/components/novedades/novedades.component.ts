@@ -1,29 +1,36 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
+import { MatSelectModule } from '@angular/material/select';
+import { MatIconModule } from '@angular/material/icon';
 import { PreviewPdfComponent } from './preview-pdf.component';
 import { NovedadesService } from '../../services/novedades.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-novedades',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
     MatDatepickerModule,
+    MatNativeDateModule,
     MatCheckboxModule,
     MatButtonModule,
-    MatDialogModule
+    MatDialogModule,
+    MatSnackBarModule,
+    MatSelectModule,
+    MatIconModule
   ],
   template: `
     <div class="novedades-container">
@@ -47,7 +54,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
         <div formArrayName="productos">
           <div *ngFor="let producto of productos.controls; let i=index" [formGroupName]="i">
             <div class="producto-container">
-              <mat-form-field>
+              <mat-form-field class="referencia-field">
                 <mat-label>Referencia del producto</mat-label>
                 <input matInput formControlName="referencia">
               </mat-form-field>
@@ -70,18 +77,20 @@ import { MatSnackBar } from '@angular/material/snack-bar';
                 <mat-checkbox formControlName="otro">Otro</mat-checkbox>
               </div>
 
-              <mat-form-field>
-                <mat-label>Descripción</mat-label>
-                <textarea matInput formControlName="descripcion"></textarea>
-              </mat-form-field>
+              <div class="descripcion-accion-container">
+                <mat-form-field class="descripcion-field">
+                  <mat-label>Descripción</mat-label>
+                  <textarea matInput formControlName="descripcion" rows="5"></textarea>
+                </mat-form-field>
 
-              <mat-form-field>
-                <mat-label>Acción Realizada</mat-label>
-                <select matNativeControl formControlName="accion_realizada">
-                  <option value="rechazado_devuelto">Rechazado y Devuelto</option>
-                  <option value="rechazado_descargado">Rechazado y Descargado</option>
-                </select>
-              </mat-form-field>
+                <mat-form-field class="accion-field">
+                  <mat-label>Acción Realizada</mat-label>
+                  <mat-select formControlName="accion_realizada">
+                    <mat-option value="rechazado_devuelto">Rechazado y Devuelto</mat-option>
+                    <mat-option value="rechazado_descargado">Rechazado y Descargado</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
 
               <div class="file-upload">
                 <label>Anexar Remisión</label>
@@ -91,78 +100,56 @@ import { MatSnackBar } from '@angular/material/snack-bar';
           </div>
         </div>
 
-        <button mat-button type="button" (click)="agregarProducto()">Agregar otro producto</button>
+        <button mat-button type="button" (click)="agregarProducto()">
+          <mat-icon>add</mat-icon> Agregar otro producto
+        </button>
 
         <div class="form-footer">
-          <mat-form-field>
-            <mat-label>Diligenciado por</mat-label>
-            <input matInput formControlName="diligenciado_por">
-          </mat-form-field>
+          <div class="datos-contacto">
+            <mat-form-field>
+              <mat-label>Diligenciado por</mat-label>
+              <input matInput formControlName="diligenciado_por">
+            </mat-form-field>
 
-          <div class="firma-digital">
-            <img [src]="firmaDigitalUrl" alt="Firma digital">
+            <mat-form-field>
+              <mat-label>Correo electrónico</mat-label>
+              <input matInput formControlName="correo" type="email">
+            </mat-form-field>
           </div>
 
-          <mat-form-field>
-            <mat-label>Correo electrónico</mat-label>
-            <input matInput formControlName="correo" type="email">
-          </mat-form-field>
+          <div class="firma-digital">
+            <label>Firma Digital</label>
+            <div class="firma-placeholder" [class.has-image]="firmaDigitalUrl">
+              <img *ngIf="firmaDigitalUrl" src="assets/images/FirmaDigital.png" alt="Firma digital">
+              <span *ngIf="!firmaDigitalUrl">Haga clic para agregar firma</span>
+            </div>
+          </div>
         </div>
 
         <div class="actions">
-          <button mat-raised-button color="primary" type="submit">Enviar</button>
+          <button mat-raised-button color="primary" type="submit">
+            <mat-icon>send</mat-icon> Enviar
+          </button>
         </div>
       </form>
     </div>
   `,
-  styles: [`
-    .novedades-container {
-      padding: 20px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .producto-container {
-      border: 1px solid #ddd;
-      padding: 20px;
-      margin-bottom: 20px;
-      border-radius: 4px;
-    }
-
-    .cantidad-novedad,
-    .tipo-novedad {
-      margin: 20px 0;
-    }
-
-    mat-checkbox {
-      margin-right: 20px;
-    }
-
-    .form-footer {
-      margin-top: 30px;
-    }
-
-    .actions {
-      margin-top: 20px;
-      text-align: right;
-    }
-  `]
 })
 export class NovedadesComponent implements OnInit {
-  novedadForm: FormGroup;
+  novedadForm!: FormGroup;
   numeroRemision: string = '';
-  firmaDigitalUrl: string = 'assets/firma-digital.png';
+  firmaDigitalUrl: string = 'assets/images/firma-digital.png';
 
   constructor(
     private fb: FormBuilder,
     private dialog: MatDialog,
     private novedadesService: NovedadesService,
-    private snackBar: MatSnackBar
-  ) {
-    this.createForm();
-  }
+    private snackBar: MatSnackBar,
+    private router: Router
+  ) {}
 
   ngOnInit() {
+    this.createForm();
     this.generarNumeroRemision();
   }
 
@@ -206,8 +193,33 @@ export class NovedadesComponent implements OnInit {
     // Aquí iría la lógica para manejar el archivo
   }
 
-  generarNumeroRemision() {
-    // Aquí iría la lógica para generar el número FNAO####
+  async generarNumeroRemision() {
+    try {
+      // Obtener el último número de remisión de la base de datos
+      const ultimaRemision = await this.novedadesService.getUltimaRemision().toPromise();
+      
+      if (ultimaRemision) {
+        // Extraer el número y aumentarlo en 1
+        const numeroActual = parseInt(ultimaRemision.numero_remision.split('FNAO')[1]);
+        this.numeroRemision = `FNAO${(numeroActual + 1).toString().padStart(4, '0')}`;
+      } else {
+        // Si no hay remisiones previas, empezar con FNAO0001
+        this.numeroRemision = 'FNAO0001';
+      }
+    } catch (error: any) {
+      console.error('Error al generar número de remisión:', error);
+      
+      if (error.status === 401) {
+        this.snackBar.open('Sesión expirada. Por favor, inicie sesión nuevamente', 'Cerrar', {
+          duration: 5000
+        });
+        this.router.navigate(['/login']);
+      } else {
+        this.snackBar.open('Error al generar número de remisión', 'Cerrar', {
+          duration: 3000
+        });
+      }
+    }
   }
 
   onSubmit() {

@@ -22,4 +22,5 @@ export class NovedadEmailDto {
   }[];
   diligenciado_por!: string;
   correo!: string;
+  attachments?: any[];
 } 

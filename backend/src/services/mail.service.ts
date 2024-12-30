@@ -1,31 +1,37 @@
 import { Injectable } from '@nestjs/common';
 import { MailerService } from '@nestjs-modules/mailer';
-import { NovedadEmailDto } from '../dto/mail/novedad-email.dto';
+import { NovedadEmailDto } from '../mail/dto/novedad-email.dto';
 
 @Injectable()
 export class MailService {
   constructor(private mailerService: MailerService) {}
 
   async sendNovedadEmail(data: NovedadEmailDto) {
-    const { to, productos, nombreUsuario, fecha } = data;
+    const {
+      to,
+      subject,
+      numeroRemision,
+      fecha,
+      productos,
+      diligenciado_por,
+      nombreUsuario
+    } = data;
 
-    await this.mailerService.sendMail({
-      to: to,
-      subject: 'Mercancía con Problemas en la Recepción',
+    return this.mailerService.sendMail({
+      to,
+      subject,
       template: 'novedad',
       context: {
+        numeroRemision,
+        fecha,
         productos,
-        nombreUsuario,
-        fecha
+        diligenciado_por,
+        nombreUsuario
       },
-      attachments: [
-        {
-          filename: 'logo.png',
-          path: './src/assets/logo.png',
-          cid: 'logo'
-        },
-        ...data.attachments || []
-      ]
+      attachments: productos.map(p => ({
+        filename: `remision_${p.referencia}.jpg`,
+        path: p.foto_remision
+      }))
     });
   }
 } 
