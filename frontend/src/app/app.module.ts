@@ -1,29 +1,35 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { AppRoutingModule } from './app-routing.module';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { RouterModule } from '@angular/router';
+import { HttpClientModule } from '@angular/common/http';
+
 import { AppComponent } from './app.component';
-import { LoginComponent } from './components/auth/login.component';
-import { DashboardComponent } from './components/dashboard/dashboard.component';
-import { AuthInterceptor } from './interceptors/auth.interceptor';
 
 @NgModule({
-  declarations: [
-    AppComponent,
-    LoginComponent,
-    DashboardComponent
-  ],
   imports: [
     BrowserModule,
-    AppRoutingModule,
+    BrowserAnimationsModule,
     HttpClientModule,
-    FormsModule,
-    ReactiveFormsModule
+    RouterModule.forRoot([
+      {
+        path: 'novedades',
+        loadComponent: () => import('./components/novedades/novedades.component')
+          .then(m => m.NovedadesComponent)
+      },
+      {
+        path: 'consultas',
+        loadComponent: () => import('./components/consultas/consultas.component')
+          .then(m => m.ConsultasComponent)
+      },
+      {
+        path: '',
+        redirectTo: 'novedades',
+        pathMatch: 'full'
+      }
+    ])
   ],
-  providers: [
-    { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true }
-  ],
+  providers: [],
   bootstrap: [AppComponent]
 })
 export class AppModule { } 

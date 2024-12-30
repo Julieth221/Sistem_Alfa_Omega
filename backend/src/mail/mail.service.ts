@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { MailerService } from '@nestjs-modules/mailer';
-import { NovedadEmailDto } from './dto/novedad-email.dto';
+import { NovedadEmailDto } from '../dto/mail/novedad-email.dto';
 
 @Injectable()
 export class MailService {
@@ -24,7 +24,7 @@ export class MailService {
           path: './src/assets/logo.png',
           cid: 'logo'
         },
-        ...data.attachments || []
+        ...(data.attachments || [])
       ]
     });
   }

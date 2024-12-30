@@ -1,29 +1,35 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
+import { MatSelectModule } from '@angular/material/select';
+import { MatIconModule } from '@angular/material/icon';
 import { PreviewPdfComponent } from './preview-pdf.component';
 import { NovedadesService } from '../../services/novedades.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-novedades',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
     MatDatepickerModule,
+    MatNativeDateModule,
     MatCheckboxModule,
     MatButtonModule,
-    MatDialogModule
+    MatDialogModule,
+    MatSnackBarModule,
+    MatSelectModule,
+    MatIconModule
   ],
   template: `
     <div class="novedades-container">
@@ -77,10 +83,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 
               <mat-form-field>
                 <mat-label>Acción Realizada</mat-label>
-                <select matNativeControl formControlName="accion_realizada">
-                  <option value="rechazado_devuelto">Rechazado y Devuelto</option>
-                  <option value="rechazado_descargado">Rechazado y Descargado</option>
-                </select>
+                <mat-select formControlName="accion_realizada">
+                  <mat-option value="rechazado_devuelto">Rechazado y Devuelto</mat-option>
+                  <mat-option value="rechazado_descargado">Rechazado y Descargado</mat-option>
+                </mat-select>
               </mat-form-field>
 
               <div class="file-upload">
@@ -91,7 +97,9 @@ import { MatSnackBar } from '@angular/material/snack-bar';
           </div>
         </div>
 
-        <button mat-button type="button" (click)="agregarProducto()">Agregar otro producto</button>
+        <button mat-button type="button" (click)="agregarProducto()">
+          <mat-icon>add</mat-icon> Agregar otro producto
+        </button>
 
         <div class="form-footer">
           <mat-form-field>
@@ -110,59 +118,28 @@ import { MatSnackBar } from '@angular/material/snack-bar';
         </div>
 
         <div class="actions">
-          <button mat-raised-button color="primary" type="submit">Enviar</button>
+          <button mat-raised-button color="primary" type="submit">
+            <mat-icon>send</mat-icon> Enviar
+          </button>
         </div>
       </form>
     </div>
   `,
-  styles: [`
-    .novedades-container {
-      padding: 20px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .producto-container {
-      border: 1px solid #ddd;
-      padding: 20px;
-      margin-bottom: 20px;
-      border-radius: 4px;
-    }
-
-    .cantidad-novedad,
-    .tipo-novedad {
-      margin: 20px 0;
-    }
-
-    mat-checkbox {
-      margin-right: 20px;
-    }
-
-    .form-footer {
-      margin-top: 30px;
-    }
-
-    .actions {
-      margin-top: 20px;
-      text-align: right;
-    }
-  `]
 })
 export class NovedadesComponent implements OnInit {
-  novedadForm: FormGroup;
+  novedadForm!: FormGroup;
   numeroRemision: string = '';
-  firmaDigitalUrl: string = 'assets/firma-digital.png';
+  firmaDigitalUrl: string = 'assets/images/firma-digital.png';
 
   constructor(
     private fb: FormBuilder,
     private dialog: MatDialog,
     private novedadesService: NovedadesService,
     private snackBar: MatSnackBar
-  ) {
-    this.createForm();
-  }
+  ) {}
 
   ngOnInit() {
+    this.createForm();
     this.generarNumeroRemision();
   }
 
