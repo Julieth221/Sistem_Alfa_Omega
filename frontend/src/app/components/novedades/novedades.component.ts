@@ -198,12 +198,12 @@ export class NovedadesComponent implements OnInit {
       // Obtener el último número de remisión de la base de datos
       const ultimaRemision = await this.novedadesService.getUltimaRemision().toPromise();
       
-      if (ultimaRemision) {
-        // Extraer el número y aumentarlo en 1
+      if (ultimaRemision && ultimaRemision.numero_remision) {
+        // Si existe una última remisión, incrementamos el número
         const numeroActual = parseInt(ultimaRemision.numero_remision.split('FNAO')[1]);
         this.numeroRemision = `FNAO${(numeroActual + 1).toString().padStart(4, '0')}`;
       } else {
-        // Si no hay remisiones previas, empezar con FNAO0001
+        // Si no hay remisiones previas, empezamos con FNAO0001
         this.numeroRemision = 'FNAO0001';
       }
     } catch (error: any) {
@@ -215,7 +215,9 @@ export class NovedadesComponent implements OnInit {
         });
         this.router.navigate(['/login']);
       } else {
-        this.snackBar.open('Error al generar número de remisión', 'Cerrar', {
+        // En caso de error, asignamos el primer número
+        this.numeroRemision = 'FNAO0001';
+        this.snackBar.open('Se generó un nuevo número de remisión', 'Cerrar', {
           duration: 3000
         });
       }

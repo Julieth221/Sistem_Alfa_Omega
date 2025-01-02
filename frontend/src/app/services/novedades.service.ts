@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
 
@@ -8,7 +9,7 @@ import { AuthService } from './auth.service';
   providedIn: 'root'
 })
 export class NovedadesService {
-  private apiUrl = environment.apiUrl;
+  private apiUrl = `${environment.apiUrl}/novedades`;
 
   constructor(
     private http: HttpClient,
@@ -24,13 +25,19 @@ export class NovedadesService {
   }
 
   getUltimaRemision(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/novedades/ultima-remision`, {
+    return this.http.get(`${this.apiUrl}/ultima-remision`, {
       headers: this.getHeaders()
-    });
+    }).pipe(
+      catchError(error => {
+        console.error('Error al obtener última remisión:', error);
+        // Si no hay remisiones, devolvemos un objeto con número inicial
+        return of({ numero_remision: 'FNAO0000' });
+      })
+    );
   }
 
   crearNovedad(novedad: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/novedades`, novedad, {
+    return this.http.post(this.apiUrl, novedad, {
       headers: this.getHeaders()
     });
   }
