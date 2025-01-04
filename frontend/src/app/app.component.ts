@@ -1,21 +1,14 @@
 import { Component } from '@angular/core';
+import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { HeaderComponent } from './components/header/header.component';
-import { HomeComponent } from './components/home/home.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [
-    CommonModule,
-    HeaderComponent,
-    HomeComponent
-  ],
+  imports: [RouterModule, CommonModule],
   template: `
-    <app-header></app-header>
-    <app-home></app-home>
-  `
+    <router-outlet></router-outlet>
+  `,
+  styles: []
 })
-export class AppComponent {
-  title = 'ALFA Y OMEGA ENCHAPES Y ACABADOS S.A.S.';
-}
+export class AppComponent {}

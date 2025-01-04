@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-home',
@@ -7,35 +8,29 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule],
   template: `
     <div class="home">
-      <header class="hero">
-        <div class="logo-container">
+      <div class="hero">
+        <div class="content-container">
           <img src="assets/images/logo.png" alt="ALFA Y OMEGA ENCHAPES Y ACABADOS S.A.S." class="logo">
+          <div class="company-info">
+            <h1>Sistema de Gestión de Novedades</h1>
+          </div>
+          <button class="login-btn" (click)="navigateToLogin()">
+            <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+          </button>
         </div>
-        <h1>ALFA Y OMEGA</h1>
-        <h2>ENCHAPES Y ACABADOS S.A.S.</h2>
-      </header>
-
-      <section class="services">
-        <h2>Nuestros Servicios</h2>
-        <div class="services-grid">
-          <div class="service-card">
-            <i class="fas fa-tools"></i>
-            <h3>Enchapes</h3>
-            <p>Instalación profesional de enchapes para pisos y paredes</p>
-          </div>
-          <div class="service-card">
-            <i class="fas fa-home"></i>
-            <h3>Acabados</h3>
-            <p>Acabados de alta calidad para su hogar o negocio</p>
-          </div>
-          <div class="service-card">
-            <i class="fas fa-ruler-combined"></i>
-            <h3>Asesoría</h3>
-            <p>Asesoramiento experto en selección de materiales</p>
-          </div>
-        </div>
-      </section>
+      </div>
+      <footer>
+        <p class="copyright">© {{currentYear}} ALFA Y OMEGA ENCHAPES Y ACABADOS S.A.S. Todos los derechos reservados.</p>
+      </footer>
     </div>
   `
 })
-export class HomeComponent {} 
+export class HomeComponent {
+  currentYear: number = new Date().getFullYear();
+
+  constructor(private router: Router) {}
+
+  navigateToLogin() {
+    this.router.navigate(['/login']);
+  }
+} 
