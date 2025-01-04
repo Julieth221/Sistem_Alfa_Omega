@@ -90,3 +90,4 @@ backend/.env
 # Build files
 frontend/dist/
 backend/dist/
+.codegpt
