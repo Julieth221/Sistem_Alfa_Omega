@@ -1,6 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { Usuario } from './usuario.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { ProductoNovedad } from './producto-novedad.entity';
+import { Usuario } from './usuario.entity';
 
 @Entity({ schema: 'SistemNovedad', name: 'novedades' })
 export class Novedad {
@@ -16,18 +16,19 @@ export class Novedad {
   @Column({ nullable: true })
   trabajador!: string;
 
-  @ManyToOne(() => Usuario, { nullable: true })
-  usuario!: Usuario;
-
-  @Column({ nullable: true })
+  @Column({ name: 'usuario_id', nullable: true })
   usuario_id!: number;
+
+  @CreateDateColumn({ name: 'created_at' })
+  created_at!: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updated_at!: Date;
+
+  @ManyToOne(() => Usuario, { nullable: true })
+  @JoinColumn({ name: 'usuario_id' })
+  usuario!: Usuario;
 
   @OneToMany(() => ProductoNovedad, productoNovedad => productoNovedad.novedad)
   productos!: ProductoNovedad[];
-
-  @CreateDateColumn()
-  created_at!: Date;
-
-  @UpdateDateColumn()
-  updated_at!: Date;
 } 
