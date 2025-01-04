@@ -40,4 +40,55 @@
       }
     }
   }
+}
+
+.preview-content {
+  font-family: Arial, sans-serif;
+  
+  h3 {
+    color: #016165;
+    margin-bottom: 1.5rem;
+  }
+
+  .header-info {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+  }
+
+  .producto-item {
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    
+    h4 {
+      color: #016165;
+      margin-bottom: 1rem;
+    }
+  }
+
+  .footer-info {
+    .firma {
+      border-top: 2px solid #016165;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      
+      img {
+        max-width: 150px;
+        display: block;
+        margin: 0 auto;
+      }
+      
+      p {
+        text-align: center;
+        color: #016165;
+        font-weight: bold;
+      }
+    }
+  }
+}
+
+.mat-dialog-actions {
+  padding: 1rem;
+  border-top: 1px solid #ddd;
 } 
