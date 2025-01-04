@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Novedad } from './novedad.entity';
 
 @Entity({ schema: 'SistemNovedad', name: 'productos_novedad' })
@@ -6,10 +6,7 @@ export class ProductoNovedad {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @ManyToOne(() => Novedad, novedad => novedad.productos, { onDelete: 'CASCADE' })
-  novedad!: Novedad;
-
-  @Column()
+  @Column({ name: 'novedad_id' })
   novedad_id!: number;
 
   @Column()
@@ -45,20 +42,19 @@ export class ProductoNovedad {
   @Column({ default: false })
   otro!: boolean;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ nullable: true })
   descripcion!: string;
 
   @Column({ nullable: true })
   correo!: string;
 
-  @Column({ 
-    nullable: true,
-    type: 'varchar',
-    length: 50,
-    enum: ['rechazado_devuelto', 'rechazado_descargado']
-  })
+  @Column({ nullable: true })
   accion_realizada!: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'foto_remision_url', nullable: true })
   foto_remision_url!: string;
+
+  @ManyToOne(() => Novedad, novedad => novedad.productos)
+  @JoinColumn({ name: 'novedad_id' })
+  novedad!: Novedad;
 } 

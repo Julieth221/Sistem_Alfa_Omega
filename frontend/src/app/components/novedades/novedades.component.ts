@@ -15,6 +15,30 @@ import { PreviewPdfComponent } from './preview-pdf.component';
 import { NovedadesService } from '../../services/novedades.service';
 import { Router } from '@angular/router';
 
+interface ApiResponse {
+  message: string;
+  novedad?: any;
+}
+
+// Primero definimos la interfaz para el producto
+interface ProductoNovedad {
+  referencia: string;
+  cantidad_m2: boolean;
+  cantidad_cajas: boolean;
+  cantidad_unidades: boolean;
+  roturas: boolean;
+  desportillado: boolean;
+  golpeado: boolean;
+  rayado: boolean;
+  incompleto: boolean;
+  loteado: boolean;
+  otro: boolean;
+  descripcion: string;
+  accion_realizada: string;
+  foto_remision?: string;
+  correo?: string;
+}
+
 @Component({
   selector: 'app-novedades',
   standalone: true,
@@ -149,18 +173,14 @@ export class NovedadesComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.createForm();
-    this.generarNumeroRemision();
-  }
-
-  createForm() {
     this.novedadForm = this.fb.group({
       fecha: ['', Validators.required],
-      productos: this.fb.array([]),
       diligenciado_por: ['', Validators.required],
-      correo: ['', [Validators.required, Validators.email]]
+      correo: ['', [Validators.required, Validators.email]],
+      productos: this.fb.array([])
     });
-    this.agregarProducto();
+
+    this.cargarUltimoNumeroRemision();
   }
 
   get productos() {
@@ -188,78 +208,123 @@ export class NovedadesComponent implements OnInit {
     this.productos.push(producto);
   }
 
-  onFileSelected(event: any, index: number) {
+  async onFileSelected(event: any, index: number) {
     const file = event.target.files[0];
-    // Aquí iría la lógica para manejar el archivo
-  }
+    if (file) {
+      try {
+        // Verificar el tamaño del archivo
+        if (file.size > 5000000) { // 5MB
+          this.snackBar.open('La imagen es demasiado grande. Máximo 5MB', 'Cerrar', {
+            duration: 3000
+          });
+          return;
+        }
 
-  async generarNumeroRemision() {
-    try {
-      // Obtener el último número de remisión de la base de datos
-      const ultimaRemision = await this.novedadesService.getUltimaRemision().toPromise();
-      
-      if (ultimaRemision && ultimaRemision.numero_remision) {
-        // Si existe una última remisión, incrementamos el número
-        const numeroActual = parseInt(ultimaRemision.numero_remision.split('FNAO')[1]);
-        this.numeroRemision = `FNAO${(numeroActual + 1).toString().padStart(4, '0')}`;
-      } else {
-        // Si no hay remisiones previas, empezamos con FNAO0001
-        this.numeroRemision = 'FNAO0001';
-      }
-    } catch (error: any) {
-      console.error('Error al generar número de remisión:', error);
-      
-      if (error.status === 401) {
-        this.snackBar.open('Sesión expirada. Por favor, inicie sesión nuevamente', 'Cerrar', {
-          duration: 5000
-        });
-        this.router.navigate(['/login']);
-      } else {
-        // En caso de error, asignamos el primer número
-        this.numeroRemision = 'FNAO0001';
-        this.snackBar.open('Se generó un nuevo número de remisión', 'Cerrar', {
+        // Optimizar la imagen antes de convertirla a base64
+        const optimizedImage = await this.optimizeImage(file);
+        const productos = this.novedadForm.get('productos') as FormArray;
+        const producto = productos.at(index);
+        producto.patchValue({ foto_remision: optimizedImage });
+      } catch (error) {
+        console.error('Error al procesar la imagen:', error);
+        this.snackBar.open('Error al procesar la imagen', 'Cerrar', {
           duration: 3000
         });
       }
     }
   }
 
-  onSubmit() {
+  private async optimizeImage(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Redimensionar si la imagen es muy grande
+          if (width > 800) {
+            height = Math.round((height * 800) / width);
+            width = 800;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          // Convertir a JPEG con calidad reducida
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(blob);
+              } else {
+                reject(new Error('Error al optimizar la imagen'));
+              }
+            },
+            'image/jpeg',
+            0.6 // calidad 60%
+          );
+        };
+        img.onerror = () => reject(new Error('Error al cargar la imagen'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Error al leer el archivo'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  private async cargarUltimoNumeroRemision() {
+    try {
+      const resultado = await this.novedadesService.getUltimoNumeroRemision().toPromise();
+      this.numeroRemision = resultado || 'FNAO0001'; // Valor por defecto si es undefined
+    } catch (error) {
+      console.error('Error al cargar número de remisión:', error);
+      this.snackBar.open('Error al cargar número de remisión', 'Cerrar', {
+        duration: 3000
+      });
+      this.numeroRemision = 'FNAO0001'; // Valor por defecto en caso de error
+    }
+  }
+
+  async onSubmit() {
     if (this.novedadForm.valid) {
+      const formData = {
+        ...this.novedadForm.value,
+        numero_remision: this.numeroRemision,
+        diligenciado_por: this.novedadForm.get('diligenciado_por')?.value
+      };
+
+      console.log('Datos a enviar:', formData); // Debug
+
       const dialogRef = this.dialog.open(PreviewPdfComponent, {
         width: '800px',
         data: {
-          formData: this.novedadForm.value,
+          formData,
           numeroRemision: this.numeroRemision
         }
       });
 
-      dialogRef.afterClosed().subscribe(result => {
-        if (result) {
-          this.guardarNovedad();
+      dialogRef.afterClosed().subscribe(async result => {
+        if (result?.action === 'success') {
+          // Actualizar el número de remisión después de crear la novedad
+          await this.cargarUltimoNumeroRemision();
+          this.resetForm();
         }
       });
     }
   }
 
-  private guardarNovedad() {
-    const formData = this.novedadForm.value;
-    this.novedadesService.crearNovedad({
-      ...formData,
-      numero_remision: this.numeroRemision
-    }).subscribe({
-      next: (response) => {
-        this.snackBar.open('Novedad registrada con éxito', 'Cerrar', {
-          duration: 3000
-        });
-        this.novedadForm.reset();
-        this.generarNumeroRemision();
-      },
-      error: (error) => {
-        this.snackBar.open('Error al registrar la novedad', 'Cerrar', {
-          duration: 3000
-        });
-      }
-    });
+  private resetForm() {
+    this.novedadForm.reset();
+    while (this.productos.length) {
+      this.productos.removeAt(0);
+    }
+    // Cargar el nuevo número de remisión después de resetear
+    this.cargarUltimoNumeroRemision();
   }
 } 
