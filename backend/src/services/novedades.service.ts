@@ -22,22 +22,18 @@ export class NovedadesService {
 
   async getUltimoNumeroRemision(): Promise<string> {
     try {
-      // Obtener la última novedad ordenada por id de forma descendente
+      // Obtener la última novedad ordenada por ID
       const ultimaNovedad = await this.novedadesRepository
         .createQueryBuilder('novedad')
         .orderBy('novedad.id', 'DESC')
         .getOne();
 
       if (!ultimaNovedad) {
-        return 'FNAO0001'; // Valor inicial si no hay novedades
+        return 'FNAO0001';
       }
 
-      // Extraer el número de la última remisión
-      const numeroActual = parseInt(ultimaNovedad.numero_remision.replace('FNAO', ''));
-      // Incrementar en 1
-      const siguienteNumero = numeroActual + 1;
-      // Formatear el nuevo número con ceros a la izquierda
-      return `FNAO${siguienteNumero.toString().padStart(4, '0')}`;
+      const siguienteId = ultimaNovedad.id + 1;
+      return `FNAO${siguienteId.toString().padStart(4, '0')}`;
     } catch (error) {
       console.error('Error al obtener último número de remisión:', error);
       throw error;
@@ -50,22 +46,18 @@ export class NovedadesService {
     await queryRunner.startTransaction();
 
     try {
-      console.log('Datos recibidos:', novedadDto); // Debug
-
-      // Obtener el siguiente número de remisión
-      const numeroRemision = await this.getUltimoNumeroRemision();
-
-      // Crear la novedad con todos los campos necesarios
       const novedad = this.novedadesRepository.create({
-        numero_remision: numeroRemision,
         fecha: novedadDto.fecha,
-        trabajador: novedadDto.diligenciado_por, // Asegurarnos de que este campo se asigne
+        trabajador: novedadDto.diligenciado_por,
         usuario_id: novedadDto.usuario_id
       });
 
-      console.log('Novedad a guardar:', novedad); // Debug
-
       const savedNovedad = await queryRunner.manager.save(Novedad, novedad);
+
+      console.log('Novedad creada:', {
+        id: savedNovedad.id,
+        numero_remision: savedNovedad.numero_remision
+      });
 
       if (novedadDto.productos?.length > 0) {
         const productosNovedad = await Promise.all(novedadDto.productos.map(async producto => {
@@ -73,7 +65,6 @@ export class NovedadesService {
 
           if (producto.foto_remision) {
             try {
-              // Extraer el contenido base64
               const base64Data = producto.foto_remision.replace(/^data:image\/\w+;base64,/, '');
               const buffer = Buffer.from(base64Data, 'base64');
 
@@ -109,7 +100,7 @@ export class NovedadesService {
           return this.productosNovedadRepository.create({
             ...producto,
             novedad_id: savedNovedad.id,
-            correo: novedadDto.correo || 'darlycuberos17@gmail.com',
+            correo: novedadDto.correo,
             foto_remision_url
           });
         }));
@@ -120,10 +111,10 @@ export class NovedadesService {
       await queryRunner.commitTransaction();
       return savedNovedad;
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error en create:', error);
       await queryRunner.rollbackTransaction();
-      throw new BadRequestException(error.message);
+      throw error;
     } finally {
       await queryRunner.release();
     }

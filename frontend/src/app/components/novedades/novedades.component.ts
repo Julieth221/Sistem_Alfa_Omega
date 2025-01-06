@@ -281,41 +281,46 @@ export class NovedadesComponent implements OnInit {
   private async cargarUltimoNumeroRemision() {
     try {
       const resultado = await this.novedadesService.getUltimoNumeroRemision().toPromise();
-      this.numeroRemision = resultado || 'FNAO0001'; // Valor por defecto si es undefined
+      this.numeroRemision = resultado || 'FNAO0001';
+      console.log('Número de remisión cargado:', this.numeroRemision);
     } catch (error) {
       console.error('Error al cargar número de remisión:', error);
       this.snackBar.open('Error al cargar número de remisión', 'Cerrar', {
         duration: 3000
       });
-      this.numeroRemision = 'FNAO0001'; // Valor por defecto en caso de error
+      this.numeroRemision = 'FNAO0001';
     }
   }
 
   async onSubmit() {
     if (this.novedadForm.valid) {
-      const formData = {
-        ...this.novedadForm.value,
-        numero_remision: this.numeroRemision,
-        diligenciado_por: this.novedadForm.get('diligenciado_por')?.value
-      };
+      try {
+        const formData = {
+          ...this.novedadForm.value,
+          numero_remision: this.numeroRemision
+        };
 
-      console.log('Datos a enviar:', formData); // Debug
+        const dialogRef = this.dialog.open(PreviewPdfComponent, {
+          width: '800px',
+          data: {
+            formData,
+            numeroRemision: this.numeroRemision
+          }
+        });
 
-      const dialogRef = this.dialog.open(PreviewPdfComponent, {
-        width: '800px',
-        data: {
-          formData,
-          numeroRemision: this.numeroRemision
-        }
-      });
-
-      dialogRef.afterClosed().subscribe(async result => {
-        if (result?.action === 'success') {
-          // Actualizar el número de remisión después de crear la novedad
-          await this.cargarUltimoNumeroRemision();
-          this.resetForm();
-        }
-      });
+        dialogRef.afterClosed().subscribe(async result => {
+          if (result?.action === 'success') {
+            // Recargar el número de remisión después de crear la novedad
+            await this.cargarUltimoNumeroRemision();
+            this.resetForm();
+          }
+        });
+      } catch (error) {
+        console.error('Error al enviar formulario:', error);
+        this.snackBar.open('Error al crear la novedad', 'Cerrar', {
+          duration: 3000
+        });
+      }
     }
   }
 
