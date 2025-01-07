@@ -1,43 +1,48 @@
-import { Controller, Post, Body, Get, HttpStatus, HttpException } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { NovedadesService } from '../services/novedades.service';
 import { INovedadDto } from '../dto/producto-novedad.interface';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Request as ExpressRequest } from 'express';
+
+interface RequestWithUser extends ExpressRequest {
+  user: {
+    id: number;
+    email: string;
+    roles: string[];
+  }
+}
 
 @Controller('novedades')
 export class NovedadesController {
   constructor(private readonly novedadesService: NovedadesService) {}
 
-  @Post()
-  async crearNovedad(@Body() novedadDto: INovedadDto) {
+  @Get('ultimo-numero')
+  async getUltimoNumeroRemision() {
     try {
-      const novedad = await this.novedadesService.create(novedadDto);
+      const numeroRemision = await this.novedadesService.getUltimoNumeroRemision();
+      return { numeroRemision };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  async create(@Request() req: RequestWithUser, @Body() novedadDto: INovedadDto) {
+    try {
+      const novedadWithUser = {
+        ...novedadDto,
+        usuario_id: req.user.id
+      };
+      
+      const novedad = await this.novedadesService.create(novedadWithUser);
       return {
         success: true,
         message: 'Novedad creada y correo enviado exitosamente',
         novedad
       };
-    } catch (error: any) {
-      throw new HttpException({
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-        error: 'Error al crear la novedad o enviar el correo',
-        details: error.message
-      }, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  @Get('ultima-remision')
-  async getUltimaRemision() {
-    try {
-      const ultimaRemision = await this.novedadesService.findLastRemision();
-      return {
-        success: true,
-        data: ultimaRemision
-      };
-    } catch (error: any) {
-      throw new HttpException({
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-        error: 'Error al obtener la última remisión',
-        details: error.message
-      }, HttpStatus.INTERNAL_SERVER_ERROR);
+    } catch (error) {
+      throw error;
     }
   }
 } 
