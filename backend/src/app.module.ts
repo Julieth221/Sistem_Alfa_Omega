@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { databaseConfig } from './config/database.config';
 import { NovedadesModule } from './modules/novedades.module';
 import { AuthModule } from './auth/auth.module';
@@ -8,24 +8,30 @@ import { MailerModule } from '@nestjs-modules/mailer';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
     TypeOrmModule.forRoot(databaseConfig),
     NovedadesModule,
     AuthModule,
     MailerModule.forRootAsync({
-      useFactory: () => ({
+      imports: [ConfigModule],
+      useFactory: async (config: ConfigService) => ({
         transport: {
-          host: process.env.MAIL_HOST,
+          host: 'smtp.gmail.com',
+          port: 587,
           secure: false,
           auth: {
-            user: process.env.MAIL_USER,
-            pass: process.env.MAIL_PASSWORD,
+            user: config.get('MAIL_USER'),
+            pass: config.get('MAIL_PASSWORD'),
           },
         },
         defaults: {
-          from: process.env.MAIL_FROM,
+          from: config.get('MAIL_FROM'),
         },
       }),
+      inject: [ConfigService],
     })
   ],
 })
