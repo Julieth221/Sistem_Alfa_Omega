@@ -8,6 +8,7 @@ import { MailerService } from '@nestjs-modules/mailer';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as sharp from 'sharp';
+import * as PDFDocument from 'pdfkit';
 
 @Injectable()
 export class NovedadesService {
@@ -40,12 +41,60 @@ export class NovedadesService {
     }
   }
 
+  private async generarPDF(novedad: Novedad, productos: ProductoNovedad[]): Promise<string> {
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument();
+        const fileName = `novedad_${novedad.numero_remision}_${Date.now()}.pdf`;
+        const filePath = `./uploads/${fileName}`;
+        const writeStream = fs.createWriteStream(filePath);
+
+        doc.pipe(writeStream);
+
+        // Diseño del PDF
+        doc.fontSize(20).text('Mercancía con Problemas en la Recepción', { align: 'center' });
+        doc.moveDown();
+        
+        doc.fontSize(12).text(`N° DE REMISIÓN: ${novedad.numero_remision}`);
+        doc.text(`FECHA: ${new Date(novedad.fecha).toLocaleDateString()}`);
+        doc.text(`DILIGENCIADO POR: ${novedad.trabajador}`);
+        doc.moveDown();
+
+        // Agregar productos
+        productos.forEach(producto => {
+          doc.text('PRODUCTO:');
+          doc.text(`Referencia: ${producto.referencia}`);
+          doc.text('Problemas encontrados:');
+          if (producto.desportillado) doc.text('- Desportillado');
+          if (producto.golpeado) doc.text('- Golpeado');
+          if (producto.rayado) doc.text('- Rayado');
+          if (producto.incompleto) doc.text('- Incompleto');
+          if (producto.loteado) doc.text('- Loteado');
+          if (producto.otro) doc.text('- Otro');
+          doc.text(`Descripción: ${producto.descripcion}`);
+          doc.text(`Acción realizada: ${producto.accion_realizada}`);
+          doc.moveDown();
+        });
+
+        doc.end();
+
+        writeStream.on('finish', () => {
+          resolve(filePath);
+        });
+
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   async create(novedadDto: INovedadDto): Promise<Novedad> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
+      // Crear la novedad
       const novedad = this.novedadesRepository.create({
         fecha: novedadDto.fecha,
         trabajador: novedadDto.diligenciado_por,
@@ -54,58 +103,64 @@ export class NovedadesService {
 
       const savedNovedad = await queryRunner.manager.save(Novedad, novedad);
 
-      console.log('Novedad creada:', {
-        id: savedNovedad.id,
-        numero_remision: savedNovedad.numero_remision
-      });
-
+      // Crear productos de la novedad
       if (novedadDto.productos?.length > 0) {
         const productosNovedad = await Promise.all(novedadDto.productos.map(async producto => {
-          let foto_remision_url = 'sin_imagen.jpg';
-
-          if (producto.foto_remision) {
-            try {
-              const base64Data = producto.foto_remision.replace(/^data:image\/\w+;base64,/, '');
-              const buffer = Buffer.from(base64Data, 'base64');
-
-              // Crear directorio si no existe
-              const uploadDir = path.join(process.cwd(), 'uploads');
-              if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
-              }
-
-              // Generar nombre único para el archivo
-              const fileName = `remision_${savedNovedad.id}_${Date.now()}.jpg`;
-              const filePath = path.join(uploadDir, fileName);
-
-              // Comprimir y guardar la imagen
-              await sharp(buffer)
-                .resize(800, 800, {
-                  fit: 'inside',
-                  withoutEnlargement: true
-                })
-                .jpeg({
-                  quality: 60,
-                  progressive: true
-                })
-                .toFile(filePath);
-
-              foto_remision_url = `/uploads/${fileName}`;
-            } catch (error) {
-              console.error('Error procesando imagen:', error);
-              foto_remision_url = 'sin_imagen.jpg';
-            }
-          }
+          // Generar una URL por defecto si no hay foto
+          const foto_remision_url = producto.foto_remision 
+            ? `/uploads/remision_${savedNovedad.id}_${Date.now()}.jpg`
+            : '/uploads/sin_imagen.jpg';
 
           return this.productosNovedadRepository.create({
             ...producto,
             novedad_id: savedNovedad.id,
             correo: novedadDto.correo,
-            foto_remision_url
+            foto_remision_url // Agregar la URL de la foto
           });
         }));
 
-        await queryRunner.manager.save(ProductoNovedad, productosNovedad);
+        const productosGuardados = await queryRunner.manager.save(ProductoNovedad, productosNovedad);
+
+        // Generar PDF
+        const pdfPath = await this.generarPDF(savedNovedad, productosGuardados);
+
+        // Enviar correo
+        await this.mailerService.sendMail({
+          to: novedadDto.correo,
+          subject: 'Mercancía con Problemas en la Recepción',
+          html: `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+              <h2 style="color: #1976d2;">Mercancía con Problemas en la Recepción</h2>
+              
+              <p>Señor@s,</p>
+              
+              <p>Cordial saludo,</p>
+              
+              <p>Por medio de la presente, nos permitimos informar que se han identificado novedades en la recepción de mercancía correspondiente a la remisión N° ${savedNovedad.numero_remision}.</p>
+              
+              <p>Adjunto encontrarán:</p>
+              <ul>
+                <li>Documento PDF con el detalle de las novedades encontradas</li>
+                <li>Registro fotográfico de los productos afectados</li>
+              </ul>
+              
+              <p>Agradecemos su atención y quedamos atentos a sus comentarios.</p>
+              
+              <p>Cordialmente,</p>
+              <p><strong>${savedNovedad.trabajador}</strong><br>
+              Alfa y Omega Acabados</p>
+            </div>
+          `,
+          attachments: [
+            {
+              filename: `novedad_${savedNovedad.numero_remision}.pdf`,
+              path: pdfPath
+            }
+          ]
+        });
+
+        // Limpiar el archivo PDF temporal
+        fs.unlinkSync(pdfPath);
       }
 
       await queryRunner.commitTransaction();
@@ -119,7 +174,6 @@ export class NovedadesService {
       await queryRunner.release();
     }
   }
-  
 
   generateEmailPreview(novedad: Novedad, productos: ProductoNovedad[]): string {
     return `
