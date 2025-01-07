@@ -44,37 +44,144 @@ export class NovedadesService {
   private async generarPDF(novedad: Novedad, productos: ProductoNovedad[]): Promise<string> {
     return new Promise((resolve, reject) => {
       try {
-        const doc = new PDFDocument();
+        const doc = new PDFDocument({
+          size: 'A4',
+          margin: 50
+        });
+
         const fileName = `novedad_${novedad.numero_remision}_${Date.now()}.pdf`;
         const filePath = `./uploads/${fileName}`;
         const writeStream = fs.createWriteStream(filePath);
 
         doc.pipe(writeStream);
 
-        // Diseño del PDF
-        doc.fontSize(20).text('Mercancía con Problemas en la Recepción', { align: 'center' });
-        doc.moveDown();
-        
-        doc.fontSize(12).text(`N° DE REMISIÓN: ${novedad.numero_remision}`);
-        doc.text(`FECHA: ${new Date(novedad.fecha).toLocaleDateString()}`);
-        doc.text(`DILIGENCIADO POR: ${novedad.trabajador}`);
+        // Encabezado con logo (si lo tienes)
+        // doc.image('path/to/logo.png', 50, 45, { width: 100 });
+
+        // Título principal
+        doc.font('Helvetica-Bold')
+           .fontSize(24)
+           .fillColor('#1976d2')
+           .text('Mercancía con Problemas en la Recepción', {
+             align: 'center'
+           });
+
+        doc.moveDown(2);
+
+        // Información de la novedad
+        doc.font('Helvetica-Bold')
+           .fontSize(14)
+           .fillColor('#000000')
+           .text('Información General', {
+             underline: true
+           });
+
         doc.moveDown();
 
-        // Agregar productos
-        productos.forEach(producto => {
-          doc.text('PRODUCTO:');
+        // Detalles en una tabla
+        doc.font('Helvetica')
+           .fontSize(12)
+           .fillColor('#333333');
+
+        const infoTable = {
+          'N° DE REMISIÓN:': novedad.numero_remision,
+          'FECHA:': new Date(novedad.fecha).toLocaleDateString('es-CO', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          }),
+          'DILIGENCIADO POR:': novedad.trabajador
+        };
+
+        Object.entries(infoTable).forEach(([key, value]) => {
+          doc.font('Helvetica-Bold').text(key, { continued: true });
+          doc.font('Helvetica').text(`  ${value}`);
+        });
+
+        doc.moveDown(2);
+
+        // Sección de productos
+        doc.font('Helvetica-Bold')
+           .fontSize(14)
+           .text('Productos Afectados', {
+             underline: true
+           });
+
+        doc.moveDown();
+
+        // Iterar sobre cada producto
+        productos.forEach((producto, index) => {
+          // Borde superior
+          doc.moveTo(50, doc.y)
+             .lineTo(545, doc.y)
+             .stroke();
+
+          doc.moveDown();
+
+          // Título del producto
+          doc.font('Helvetica-Bold')
+             .fontSize(12)
+             .text(`PRODUCTO ${index + 1}`, {
+               align: 'left'
+             });
+
+          doc.moveDown(0.5);
+
+          // Detalles del producto
+          doc.font('Helvetica')
+             .fontSize(11);
+
           doc.text(`Referencia: ${producto.referencia}`);
-          doc.text('Problemas encontrados:');
-          if (producto.desportillado) doc.text('- Desportillado');
-          if (producto.golpeado) doc.text('- Golpeado');
-          if (producto.rayado) doc.text('- Rayado');
-          if (producto.incompleto) doc.text('- Incompleto');
-          if (producto.loteado) doc.text('- Loteado');
-          if (producto.otro) doc.text('- Otro');
+          
+          // Problemas encontrados
+          doc.font('Helvetica-Bold').text('Problemas encontrados:');
+          doc.font('Helvetica');
+          
+          const problemas = [];
+          if (producto.desportillado) problemas.push('Desportillado');
+          if (producto.golpeado) problemas.push('Golpeado');
+          if (producto.rayado) problemas.push('Rayado');
+          if (producto.incompleto) problemas.push('Incompleto');
+          if (producto.loteado) problemas.push('Loteado');
+          if (producto.otro) problemas.push('Otro');
+
+          problemas.forEach(problema => {
+            doc.text(`• ${problema}`, {
+              indent: 20
+            });
+          });
+
+          doc.moveDown(0.5);
+          
+          // Descripción y acción
           doc.text(`Descripción: ${producto.descripcion}`);
-          doc.text(`Acción realizada: ${producto.accion_realizada}`);
+          doc.text(`Acción realizada: ${producto.accion_realizada.replace('_', ' ').toUpperCase()}`);
+
+          // Si hay foto, agregarla
+          if (producto.foto_remision_url && producto.foto_remision_url !== '/uploads/sin_imagen.jpg') {
+            try {
+              const imagePath = `.${producto.foto_remision_url}`;
+              if (fs.existsSync(imagePath)) {
+                doc.moveDown();
+                doc.image(imagePath, {
+                  fit: [200, 200],
+                  align: 'center'
+                });
+              }
+            } catch (error) {
+              console.error('Error al agregar imagen:', error);
+            }
+          }
+
           doc.moveDown();
         });
+
+        // Pie de página
+        doc.fontSize(10)
+           .fillColor('#666666') 
+           .text('Alfa y Omega Acabados', {
+             align: 'center',
+           });
 
         doc.end();
 
