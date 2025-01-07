@@ -75,7 +75,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
         <div class="footer-info">
           <p><strong>Diligenciado por:</strong> {{ data.formData.diligenciado_por }}</p>
           <div class="firma">
-            <img src="assets/images/FirmaDigital.png" alt="Firma digital" class="firma-image">
+            <img *ngIf="firmaDigitalUrl" src="assets/images/FirmaDigital.png" alt="Firma digital" class="firma-image">
             <p>Representante ALFA Y OMEGA</p>
           </div>
         </div>
