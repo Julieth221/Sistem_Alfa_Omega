@@ -50,121 +50,124 @@ export class NovedadesService {
         });
 
         const fileName = `novedad_${novedad.numero_remision}_${Date.now()}.pdf`;
-        const filePath = `./uploads/${fileName}`;
+        const filePath = path.join(process.cwd(), 'uploads', fileName);
         const writeStream = fs.createWriteStream(filePath);
 
         doc.pipe(writeStream);
 
-        // Encabezado con logo (si lo tienes)
-        // doc.image('path/to/logo.png', 50, 45, { width: 100 });
-
-        // Título principal
+        // Título con estilo
         doc.font('Helvetica-Bold')
-           .fontSize(24)
+           .fontSize(22)
            .fillColor('#1976d2')
            .text('Mercancía con Problemas en la Recepción', {
              align: 'center'
            });
 
-        doc.moveDown(2);
+        doc.moveDown(1.5);
 
-        // Información de la novedad
+        // Información General con mejor formato
         doc.font('Helvetica-Bold')
-           .fontSize(14)
-           .fillColor('#000000')
-           .text('Información General', {
-             underline: true
-           });
+           .fontSize(16)
+           .fillColor('#333333')
+           .text('Información General');
 
-        doc.moveDown();
+        doc.moveDown(0.5);
 
-        // Detalles en una tabla
-        doc.font('Helvetica')
+        // Cuadro de información con mejor espaciado
+        const infoY = doc.y;
+        doc.font('Helvetica-Bold')
            .fontSize(12)
-           .fillColor('#333333');
+           .text('N° DE REMISIÓN:', 50, infoY)
+           .font('Helvetica')
+           .text(novedad.numero_remision, 180, infoY);
 
-        const infoTable = {
-          'N° DE REMISIÓN:': novedad.numero_remision,
-          'FECHA:': new Date(novedad.fecha).toLocaleDateString('es-CO', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          }),
-          'DILIGENCIADO POR:': novedad.trabajador
-        };
-
-        Object.entries(infoTable).forEach(([key, value]) => {
-          doc.font('Helvetica-Bold').text(key, { continued: true });
-          doc.font('Helvetica').text(`  ${value}`);
-        });
-
-        doc.moveDown(2);
-
-        // Sección de productos
         doc.font('Helvetica-Bold')
-           .fontSize(14)
-           .text('Productos Afectados', {
-             underline: true
-           });
+           .text('FECHA:', 50, infoY + 25)
+           .font('Helvetica')
+           .text(new Date(novedad.fecha).toLocaleDateString('es-CO', {
+             year: 'numeric',
+             month: 'long',
+             day: 'numeric'
+           }), 180, infoY + 25);
 
-        doc.moveDown();
+        doc.font('Helvetica-Bold')
+           .text('DILIGENCIADO POR:', 50, infoY + 50)
+           .font('Helvetica')
+           .text(novedad.trabajador, 180, infoY + 50);
 
-        // Iterar sobre cada producto
+        doc.moveDown(3);
+
+        // Productos con mejor formato
         productos.forEach((producto, index) => {
-          // Borde superior
-          doc.moveTo(50, doc.y)
-             .lineTo(545, doc.y)
-             .stroke();
+          // Título del producto con fondo
+          doc.fillColor('#1976d2')
+             .opacity(0.1)
+             .rect(50, doc.y, 495, 30)
+             .fill();
 
-          doc.moveDown();
+          doc.opacity(1)
+             .fillColor('#1976d2')
+             .font('Helvetica-Bold')
+             .fontSize(14)
+             .text(`PRODUCTO ${index + 1}`, 60, doc.y - 25);
 
-          // Título del producto
-          doc.font('Helvetica-Bold')
-             .fontSize(12)
-             .text(`PRODUCTO ${index + 1}`, {
-               align: 'left'
-             });
-
-          doc.moveDown(0.5);
+          doc.moveDown(1);
 
           // Detalles del producto
-          doc.font('Helvetica')
-             .fontSize(11);
+          const startY = doc.y;
+          doc.fontSize(12)
+             .fillColor('#333333');
 
-          doc.text(`Referencia: ${producto.referencia}`);
-          
+          // Referencia
+          doc.font('Helvetica-Bold')
+             .text('Referencia:', 50)
+             .font('Helvetica')
+             .text(producto.referencia, 180);
+
+          // Cantidades formateadas correctamente
+          let cantidadTexto = '';
+          if (producto.cantidad_cajas) cantidadTexto += `${producto.cantidad_cajas} cajas `;
+          if (producto.cantidad_m2) cantidadTexto += `${producto.cantidad_m2} m² `;
+          if (producto.cantidad_unidades) cantidadTexto += `${producto.cantidad_unidades} unidades`;
+
+          doc.font('Helvetica-Bold')
+             .text('Cantidad:', 50)
+             .font('Helvetica')
+             .text(cantidadTexto.trim() || 'No especificada', 180);
+
           // Problemas encontrados
-          doc.font('Helvetica-Bold').text('Problemas encontrados:');
-          doc.font('Helvetica');
+          doc.moveDown(0.5);
+          doc.font('Helvetica-Bold')
+             .text('Problemas encontrados:', 50);
           
-          const problemas = [];
-          if (producto.desportillado) problemas.push('Desportillado');
-          if (producto.golpeado) problemas.push('Golpeado');
-          if (producto.rayado) problemas.push('Rayado');
-          if (producto.incompleto) problemas.push('Incompleto');
-          if (producto.loteado) problemas.push('Loteado');
-          if (producto.otro) problemas.push('Otro');
-
-          problemas.forEach(problema => {
-            doc.text(`• ${problema}`, {
-              indent: 20
-            });
-          });
+          if(producto.desportillado) doc.font('Helvetica').text('• Desportillado', 70);
+          if(producto.golpeado) doc.font('Helvetica').text('• Golpeado', 70);
+          if(producto.rayado) doc.font('Helvetica').text('• Rayado', 70);
+          if(producto.incompleto) doc.font('Helvetica').text('• Incompleto', 70);
+          if(producto.loteado) doc.font('Helvetica').text('• Loteado', 70);
+          if(producto.otro) doc.font('Helvetica').text('• Otro', 70);
 
           doc.moveDown(0.5);
-          
-          // Descripción y acción
-          doc.text(`Descripción: ${producto.descripcion}`);
-          doc.text(`Acción realizada: ${producto.accion_realizada.replace('_', ' ').toUpperCase()}`);
 
-          // Si hay foto, agregarla
+          // Descripción y acción
+          doc.font('Helvetica-Bold')
+             .text('Descripción:', 50)
+             .font('Helvetica')
+             .text(producto.descripcion || 'No especificada', 180);
+
+          doc.font('Helvetica-Bold')
+             .text('Acción realizada:', 50)
+             .font('Helvetica')
+             .text(producto.accion_realizada.replace(/_/g, ' ').toUpperCase(), 180);
+
+          // Imagen del producto
           if (producto.foto_remision_url && producto.foto_remision_url !== '/uploads/sin_imagen.jpg') {
             try {
-              const imagePath = `.${producto.foto_remision_url}`;
+              const imagePath = path.join(process.cwd(), producto.foto_remision_url);
               if (fs.existsSync(imagePath)) {
                 doc.moveDown();
                 doc.image(imagePath, {
-                  fit: [200, 200],
+                  width: 200,
                   align: 'center'
                 });
               }
@@ -173,21 +176,24 @@ export class NovedadesService {
             }
           }
 
-          doc.moveDown();
+          doc.moveDown(2);
         });
 
-        // Pie de página
-        doc.fontSize(10)
-           .fillColor('#666666') 
+        // Pie de página con línea decorativa
+        doc.moveTo(50, doc.page.height - 50)
+           .lineTo(545, doc.page.height - 50)
+           .stroke();
+
+        doc.font('Helvetica')
+           .fontSize(10)
+           .fillColor('#666666')
            .text('Alfa y Omega Acabados', {
-             align: 'center',
+             align: 'center'
            });
 
         doc.end();
 
-        writeStream.on('finish', () => {
-          resolve(filePath);
-        });
+        writeStream.on('finish', () => resolve(filePath));
 
       } catch (error) {
         reject(error);
