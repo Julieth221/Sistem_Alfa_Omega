@@ -56,19 +56,19 @@ export class NovedadesService {
         // Encabezado
         doc.image(path.join(process.cwd(), 'src', 'assets', 'images', 'logo2.png'), 50, 20, { width: 100 }) // Cambia la ruta al logo
            .font('Helvetica-Bold')
-           .fontSize(20)
+           .fontSize(24) // Aumentar tamaño del título
            .fillColor('#1976d2')
            .text('Mercancía con Problemas en la Recepción', {
-             align: 'center'
+             align: 'right'
            });
 
-        doc.moveDown(2);
+        doc.moveDown(1.5);
 
         // Información General
         doc.font('Helvetica-Bold')
-           .fontSize(14)
-           .fillColor('#000000')
-           .text('Información General', { underline: true });
+           .fontSize(20) // Tamaño de letra más grande
+           .fillColor('#000000') // Color del texto
+           .text('Información General');
 
         doc.moveDown();
 
@@ -76,6 +76,11 @@ export class NovedadesService {
         const infoY = doc.y;
         const startX = 50;
         const colWidth = 200;
+
+        // Cambiar color de la tabla
+        doc.fillColor('#e3f2fd') // Color azul claro
+           .rect(startX, infoY, colWidth * 2, 50)
+           .fill();
 
         // Dibujar líneas de la tabla de información
         doc.lineWidth(0.5)
@@ -86,8 +91,10 @@ export class NovedadesService {
         // Información General
         const drawInfoRow = (label: string, value: string, y: number) => {
           doc.font('Helvetica-Bold')
+             .fillColor('#000000') // Color menos negro
              .text(label, startX, y)
              .font('Helvetica')
+             .fillColor('#666666') // Color normal para el valor
              .text(value, startX + colWidth, y);
         };
 
@@ -105,7 +112,6 @@ export class NovedadesService {
         productos.forEach((producto, index) => {
           doc.font('Helvetica-Bold')
              .fontSize(14)
-             .fillColor('#1976d2')
              .text(`PRODUCTO ${index + 1}`, { underline: true });
           
           doc.moveDown();
@@ -155,6 +161,7 @@ export class NovedadesService {
 
           // Problemas encontrados
           const problemas = [];
+          if (producto.roturas) problemas.push('Roturas');
           if (producto.desportillado) problemas.push('Desportillado');
           if (producto.golpeado) problemas.push('Golpeado');
           if (producto.rayado) problemas.push('Rayado');
@@ -318,43 +325,8 @@ export class NovedadesService {
     }
   }
 
-  generateEmailPreview(novedad: Novedad, productos: ProductoNovedad[]): string {
-    return `
-      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
-        <h2>Novedad de Remisión</h2>
-        <p><strong>Fecha:</strong> ${new Date(novedad.fecha).toLocaleDateString()}</p>
-        <p><strong>Diligenciado por:</strong> ${novedad.trabajador}</p>
-        <h3>Productos:</h3>
-        <div style="margin-top: 20px;">
-          ${productos.map(p => `
-            <div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 15px;">
-              <p><strong>Referencia:</strong> ${p.referencia}</p>
-              <p><strong>Descripción:</strong> ${p.descripcion || 'No especificada'}</p>
-              ${this.generateProductDetails(p)}
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }
 
-  private generateProductDetails(producto: ProductoNovedad): string {
-    const detalles = [];
-    if (producto.cantidad_m2) detalles.push('Cantidad en m²');
-    if (producto.cantidad_cajas) detalles.push('Cantidad en cajas');
-    if (producto.cantidad_unidades) detalles.push('Cantidad en unidades');
-    if (producto.roturas) detalles.push('Roturas');
-    if (producto.desportillado) detalles.push('Desportillado');
-    if (producto.golpeado) detalles.push('Golpeado');
-    if (producto.rayado) detalles.push('Rayado');
-    if (producto.incompleto) detalles.push('Incompleto');
-    if (producto.loteado) detalles.push('Loteado');
-    if (producto.otro) detalles.push('Otro');
-
-    return detalles.length > 0 ? 
-      `<p><strong>Problemas detectados:</strong> ${detalles.join(', ')}</p>` : '';
-  }
-
+ 
   async findLastRemision(): Promise<Novedad | null> {
     try {
       const novedad = await this.novedadesRepository.findOne({
