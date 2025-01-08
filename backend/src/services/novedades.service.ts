@@ -7,7 +7,6 @@ import { INovedadDto } from '../dto/producto-novedad.interface';
 import { MailerService } from '@nestjs-modules/mailer';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as sharp from 'sharp';
 import * as PDFDocument from 'pdfkit';
 
 @Injectable()
@@ -23,7 +22,6 @@ export class NovedadesService {
 
   async getUltimoNumeroRemision(): Promise<string> {
     try {
-      // Obtener la última novedad ordenada por ID
       const ultimaNovedad = await this.novedadesRepository
         .createQueryBuilder('novedad')
         .orderBy('novedad.id', 'DESC')
@@ -55,8 +53,9 @@ export class NovedadesService {
 
         doc.pipe(writeStream);
 
-        // Título
-        doc.font('Helvetica-Bold')
+        // Encabezado
+        doc.image(path.join(process.cwd(), 'src', 'assets', 'images', 'logo2.png'), 50, 20, { width: 100 }) // Cambia la ruta al logo
+           .font('Helvetica-Bold')
            .fontSize(20)
            .fillColor('#1976d2')
            .text('Mercancía con Problemas en la Recepción', {
@@ -69,7 +68,7 @@ export class NovedadesService {
         doc.font('Helvetica-Bold')
            .fontSize(14)
            .fillColor('#000000')
-           .text('Información General');
+           .text('Información General', { underline: true });
 
         doc.moveDown();
 
@@ -107,7 +106,7 @@ export class NovedadesService {
           doc.font('Helvetica-Bold')
              .fontSize(14)
              .fillColor('#1976d2')
-             .text(`PRODUCTO ${index + 1}`);
+             .text(`PRODUCTO ${index + 1}`, { underline: true });
           
           doc.moveDown();
 
@@ -210,7 +209,6 @@ export class NovedadesService {
     });
   }
 
-  // Método para guardar imágenes corregido
   private async guardarImagen(base64Image: string, nombreArchivo: string): Promise<string> {
     try {
       const uploadDir = path.join(process.cwd(), 'uploads');
@@ -235,69 +233,6 @@ export class NovedadesService {
     }
   }
 
-  // Métodos auxiliares
-  private drawTable(doc: PDFKit.PDFDocument, table: any, x: number, y: number) {
-    const columnWidth = 495 / table.headers.length;
-    
-    // Dibuja encabezados
-    doc.font('Helvetica-Bold')
-       .fontSize(11);
-    
-    table.headers.forEach((header: string, i: number) => {
-      doc.text(header, x + (i * columnWidth), y, {
-        width: columnWidth,
-        align: 'left'
-      });
-    });
-
-    doc.moveDown();
-    
-    // Dibuja datos
-    doc.font('Helvetica')
-       .fontSize(10);
-    
-    // Asegurarse de que table.data sea un array y cada elemento sea un array
-    if (Array.isArray(table.data)) {
-      table.data.forEach((row: any) => {
-        if (Array.isArray(row)) {
-          row.forEach((cell: any, i: number) => {
-            const cellText = cell?.toString() || '';
-            doc.text(cellText, x + (i * columnWidth), doc.y, {
-              width: columnWidth,
-              align: 'left'
-            });
-          });
-        } else {
-          // Si row no es un array, tratarlo como un valor único
-          doc.text(row?.toString() || '', x, doc.y, {
-            width: columnWidth,
-            align: 'left'
-          });
-        }
-        doc.moveDown();
-      });
-    }
-  }
-
-  private formatCantidad(producto: ProductoNovedad): string {
-    const cantidades = [];
-    if (producto.cantidad_cajas) cantidades.push(`${producto.cantidad_cajas} cajas`);
-    if (producto.cantidad_m2) cantidades.push(`${producto.cantidad_m2} m²`);
-    if (producto.cantidad_unidades) cantidades.push(`${producto.cantidad_unidades} unidades`);
-    return cantidades.join(', ') || 'No especificada';
-  }
-
-  private formatProblemas(producto: ProductoNovedad): string {
-    const problemas = [];
-    if (producto.desportillado) problemas.push('Desportillado');
-    if (producto.golpeado) problemas.push('Golpeado');
-    if (producto.rayado) problemas.push('Rayado');
-    if (producto.incompleto) problemas.push('Incompleto');
-    if (producto.loteado) problemas.push('Loteado');
-    if (producto.otro) problemas.push('Otro');
-    return problemas.join(', ') || 'Ninguno';
-  }
-
   async create(novedadDto: INovedadDto): Promise<Novedad> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -315,7 +250,6 @@ export class NovedadesService {
       // Crear productos de la novedad
       if (novedadDto.productos?.length > 0) {
         const productosNovedad = await Promise.all(novedadDto.productos.map(async producto => {
-          // Generar una URL por defecto si no hay foto
           const foto_remision_url = producto.foto_remision 
             ? `/uploads/remision_${savedNovedad.id}_${Date.now()}.jpg`
             : '/uploads/sin_imagen.jpg';
@@ -324,7 +258,7 @@ export class NovedadesService {
             ...producto,
             novedad_id: savedNovedad.id,
             correo: novedadDto.correo,
-            foto_remision_url // Agregar la URL de la foto
+            foto_remision_url
           });
         }));
 
@@ -436,8 +370,9 @@ export class NovedadesService {
     } catch (error) {
       console.error('Error al buscar última remisión:', error);
       throw new InternalServerErrorException(
-        'Error al obtener la última remisión'
+        'Error al obtener la última remisión.'
       );
     }
   }
-} 
+}
+ 
