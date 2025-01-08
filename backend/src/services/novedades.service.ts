@@ -44,7 +44,8 @@ export class NovedadesService {
       try {
         const doc = new PDFDocument({
           size: 'A4',
-          margin: 50
+          margin: 50,
+          bufferPages: true
         });
 
         const fileName = `novedad_${novedad.numero_remision}_${Date.now()}.pdf`;
@@ -53,113 +54,99 @@ export class NovedadesService {
 
         doc.pipe(writeStream);
 
-        // Encabezado
-        doc.image(path.join(process.cwd(), 'src', 'assets', 'images', 'logo2.png'), 50, 20, { width: 100 }) // Cambia la ruta al logo
-           .font('Helvetica-Bold')
-           .fontSize(24) // Aumentar tamaño del título
-           .fillColor('#1976d2')
-           .text('Mercancía con Problemas en la Recepción', {
-             align: 'right'
-           });
-
-        doc.moveDown(1.5);
-
-        // Información General
-        doc.font('Helvetica-Bold')
-           .fontSize(20) // Tamaño de letra más grande
-           .fillColor('#000000') // Color del texto
-           .text('Información General');
-
-        doc.moveDown();
-
-        // Tabla de información general
-        const infoY = doc.y;
-        const startX = 50;
-        const colWidth = 200;
-
-        // Cambiar color de la tabla
-        doc.fillColor('#e3f2fd') // Color azul claro
-           .rect(startX, infoY, colWidth * 2, 50)
-           .fill();
-
-        // Dibujar líneas de la tabla de información
-        doc.lineWidth(0.5)
-           .moveTo(startX, infoY)
-           .lineTo(startX + colWidth * 2, infoY)
-           .stroke();
-
-        // Información General
-        const drawInfoRow = (label: string, value: string, y: number) => {
+        const addHeader = () => {
           doc.font('Helvetica-Bold')
-             .fillColor('#000000') // Color menos negro
-             .text(label, startX, y)
-             .font('Helvetica')
-             .fillColor('#666666') // Color normal para el valor
-             .text(value, startX + colWidth, y);
+             .fontSize(20)
+             .fillColor('#016165')
+             .text('Mercancía con Problemas en la Recepción', {
+               align: 'center'
+             });
+          doc.moveDown(1);
         };
 
-        drawInfoRow('N° DE REMISIÓN:', novedad.numero_remision || '', infoY + 10);
-        drawInfoRow('FECHA:', new Date(novedad.fecha).toLocaleDateString('es-CO', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        }), infoY + 30);
-        drawInfoRow('DILIGENCIADO POR:', novedad.trabajador, infoY + 50);
+        addHeader();
+        
+        const infoY = doc.y;
+        doc.rect(50, infoY, 500, 120)
+           .fillColor('#f8f9fa')
+           .fill()
+           .strokeColor('#016165')
+           .stroke();
 
-        doc.moveDown(4);
+        doc.fontSize(16)
+           .fillColor('#016165')
+           .text('Información General', 70, infoY + 15);
 
-        // Productos
+        doc.fontSize(12)
+           .fillColor('#333333');
+
+        const col1X = 70;
+        const col2X = 300;
+        let currentY = infoY + 45;
+
+        doc.font('Helvetica-Bold')
+           .text('N° DE REMISIÓN:', col1X, currentY)
+           .font('Helvetica')
+           .text(novedad.numero_remision, col1X + 130, currentY);
+
+        doc.font('Helvetica-Bold')
+           .text('FECHA:', col1X, currentY + 25)
+           .font('Helvetica')
+           .text(new Date(novedad.fecha).toLocaleDateString('es-CO', {
+             year: 'numeric',
+             month: 'long',
+             day: 'numeric'
+           }), col1X + 130, currentY + 25);
+
+        doc.font('Helvetica-Bold')
+           .text('DILIGENCIADO POR:', col1X, currentY)
+           .font('Helvetica')
+           .text(novedad.trabajador, col1X + 130, currentY + 50);
+
+        doc.moveDown(5);
+
         productos.forEach((producto, index) => {
-          doc.font('Helvetica-Bold')
-             .fontSize(14)
-             .text(`PRODUCTO ${index + 1}`, { underline: true });
+          if (doc.y > 650) {
+            doc.addPage();
+            addHeader();
+          }
+
+          const productoY = doc.y;
+          doc.rect(50, productoY, 500, 200)
+             .fillColor('#ffffff')
+             .fill()
+             .strokeColor('#016165')
+             .stroke();
+
+          doc.fillColor('#016165')
+             .fontSize(16)
+             .font('Helvetica-Bold')
+             .text(`PRODUCTO ${index + 1}`, 70, productoY + 15);
+
+          let rowY = productoY + 45;
+          const colWidth = 240;
           
-          doc.moveDown();
-
-          // Tabla de producto
-          const tableY = doc.y;
-          const tableStartX = startX;
-          const labelWidth = 150;
-          const valueWidth = 300;
-          const rowHeight = 25;
-
-          // Función para dibujar fila de la tabla
-          const drawTableRow = (label: string, value: string, y: number) => {
-            // Dibuja el fondo de la fila
-            doc.fillColor('#f5f5f5')
-               .rect(tableStartX, y, labelWidth + valueWidth, rowHeight)
-               .fill();
-
-            // Dibuja el borde
-            doc.lineWidth(0.5)
-               .strokeColor('#000000')
-               .moveTo(tableStartX, y)
-               .lineTo(tableStartX + labelWidth + valueWidth, y)
-               .stroke();
-
-            // Escribe el contenido
-            doc.fillColor('#000000')
-               .font('Helvetica-Bold')
-               .text(label, tableStartX + 5, y + 7)
-               .font('Helvetica')
-               .text(value, tableStartX + labelWidth + 5, y + 7);
+          const addRow = (label: string, value: string, indent = false) => {
+            doc.font('Helvetica-Bold')
+               .fontSize(11)
+               .fillColor('#333333')
+               .text(label, indent ? 90 : 70, rowY);
+            
+            doc.font('Helvetica')
+               .text(value, indent ? 200 : 180, rowY);
+            
+            rowY += 20;
           };
 
-          let currentY = tableY;
+          addRow('Referencia:', producto.referencia);
 
-          // Referencia
-          drawTableRow('Referencia:', producto.referencia, currentY);
-          currentY += rowHeight;
+          if (producto.cantidad_m2 || producto.cantidad_cajas || producto.cantidad_unidades) {
+            addRow('Cantidad de la novedad:', '');
+            if (producto.cantidad_m2) addRow('M2:', producto.cantidad_m2.toString(), true);
+            if (producto.cantidad_cajas) addRow('Cajas:', producto.cantidad_cajas.toString(), true);
+            if (producto.cantidad_unidades) addRow('Unidades:', producto.cantidad_unidades.toString(), true);
+          }
 
-          // Cantidad
-          const cantidades = [];
-          if (producto.cantidad_cajas) cantidades.push(`${producto.cantidad_cajas} cajas`);
-          if (producto.cantidad_m2) cantidades.push(`${producto.cantidad_m2} m²`);
-          if (producto.cantidad_unidades) cantidades.push(`${producto.cantidad_unidades} unidades`);
-          drawTableRow('Cantidad:', cantidades.join(', '), currentY);
-          currentY += rowHeight;
-
-          // Problemas encontrados
           const problemas = [];
           if (producto.roturas) problemas.push('Roturas');
           if (producto.desportillado) problemas.push('Desportillado');
@@ -168,43 +155,51 @@ export class NovedadesService {
           if (producto.incompleto) problemas.push('Incompleto');
           if (producto.loteado) problemas.push('Loteado');
           if (producto.otro) problemas.push('Otro');
-          drawTableRow('Tipo de novedad:', problemas.join(', '), currentY);
-          currentY += rowHeight;
 
-          // Descripción
-          drawTableRow('Descripción:', producto.descripcion || '', currentY);
-          currentY += rowHeight;
-
-          // Acción realizada
-          drawTableRow('Acción realizada:', producto.accion_realizada.toUpperCase().replace(/_/g, ' '), currentY);
-          currentY += rowHeight;
-
-          // Imagen
-          if (producto.foto_remision_url && producto.foto_remision_url !== '/uploads/sin_imagen.jpg') {
-            try {
-              const imagePath = path.join(process.cwd(), producto.foto_remision_url);
-              if (fs.existsSync(imagePath)) {
-                doc.moveDown(2);
-                doc.image(imagePath, {
-                  fit: [300, 300],
-                  align: 'center'
-                });
-              }
-            } catch (error) {
-              console.error('Error al cargar imagen:', error);
-            }
+          if (problemas.length > 0) {
+            addRow('Tipo de novedad:', problemas.join(', '));
           }
 
-          doc.moveDown(3);
+          if (producto.descripcion) {
+            addRow('Descripción:', producto.descripcion);
+          }
+          
+          addRow('Acción realizada:', this.formatearAccion(producto.accion_realizada));
+
+          if (producto.foto_remision_url) {
+            if (doc.y > 600) {
+              doc.addPage();
+              addHeader();
+            }
+
+            doc.image(producto.foto_remision_url, {
+              fit: [400, 300],
+              align: 'center'
+            });
+          }
+
+          doc.moveDown(2);
         });
 
-        // Pie de página
-        doc.font('Helvetica')
-           .fontSize(10)
-           .fillColor('#666666')
-           .text('Alfa y Omega Acabados', {
-             align: 'center'
-           });
+        let pages = doc.bufferedPageRange();
+        for (let i = 0; i < pages.count; i++) {
+          doc.switchToPage(i);
+          
+          doc.moveTo(50, 750)
+             .lineTo(550, 750)
+             .strokeColor('#016165')
+             .stroke();
+
+          doc.fontSize(10)
+             .fillColor('#666666')
+             .text('Alfa y Omega Acabados', 50, 760, {
+               align: 'center',
+               width: 500
+             })
+             .text(`Página ${i + 1} de ${pages.count}`, 500, 760, {
+               align: 'right'
+             });
+        }
 
         doc.end();
 
@@ -214,6 +209,13 @@ export class NovedadesService {
         reject(error);
       }
     });
+  }
+
+  private formatearAccion(accion: string): string {
+    return accion
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   }
 
   private async guardarImagen(base64Image: string, nombreArchivo: string): Promise<string> {
@@ -226,7 +228,6 @@ export class NovedadesService {
 
       const filePath = path.join(uploadDir, nombreArchivo);
       
-      // Corregir el manejo de base64
       const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
       const imageBuffer = Buffer.from(base64Data, 'base64');
       
@@ -249,38 +250,46 @@ export class NovedadesService {
       const novedad = this.novedadesRepository.create({
         fecha: novedadDto.fecha,
         trabajador: novedadDto.diligenciado_por,
-        usuario_id: novedadDto.usuario_id
+        usuario_id: novedadDto.usuario_id,
+        numero_remision: await this.getUltimoNumeroRemision()
       });
 
       const savedNovedad = await queryRunner.manager.save(Novedad, novedad);
 
-      // Crear productos de la novedad
       if (novedadDto.productos?.length > 0) {
-        const productosNovedad = await Promise.all(novedadDto.productos.map(async producto => {
-          const foto_remision_url = producto.foto_remision 
-            ? `/uploads/remision_${savedNovedad.id}_${Date.now()}.jpg`
-            : '/uploads/sin_imagen.jpg';
+        const productosGuardados = [];
+        
+        for (const producto of novedadDto.productos) {
+          const productoNovedad = new ProductoNovedad();
+          productoNovedad.novedad = savedNovedad;
+          productoNovedad.referencia = producto.referencia;
+          productoNovedad.cantidad_m2 = producto.cantidad_m2;
+          productoNovedad.cantidad_cajas = producto.cantidad_cajas;
+          productoNovedad.cantidad_unidades = producto.cantidad_unidades;
+          productoNovedad.roturas = producto.roturas;
+          productoNovedad.desportillado = producto.desportillado;
+          productoNovedad.golpeado = producto.golpeado;
+          productoNovedad.rayado = producto.rayado;
+          productoNovedad.incompleto = producto.incompleto;
+          productoNovedad.loteado = producto.loteado;
+          productoNovedad.otro = producto.otro;
+          productoNovedad.descripcion = producto.descripcion;
+          productoNovedad.accion_realizada = producto.accion_realizada;
+          productoNovedad.correo = novedadDto.correo;
+          productoNovedad.foto_remision_url = producto.foto_remision || '';
 
-          return this.productosNovedadRepository.create({
-            ...producto,
-            novedad_id: savedNovedad.id,
-            correo: novedadDto.correo,
-            foto_remision_url
-          });
-        }));
+          const savedProducto = await queryRunner.manager.save(ProductoNovedad, productoNovedad);
+          productosGuardados.push(savedProducto);
+        }
 
-        const productosGuardados = await queryRunner.manager.save(ProductoNovedad, productosNovedad);
-
-        // Generar PDF
         const pdfPath = await this.generarPDF(savedNovedad, productosGuardados);
 
-        // Enviar correo
         await this.mailerService.sendMail({
           to: novedadDto.correo,
           subject: 'Mercancía con Problemas en la Recepción',
           html: `
             <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-              <h2 style="color: #1976d2;">Mercancía con Problemas en la Recepción</h2>
+              <h2 style="color: #016165;">Mercancía con Problemas en la Recepción</h2>
               
               <p>Señor@s,</p>
               
@@ -309,7 +318,6 @@ export class NovedadesService {
           ]
         });
 
-        // Limpiar el archivo PDF temporal
         fs.unlinkSync(pdfPath);
       }
 
@@ -337,7 +345,7 @@ export class NovedadesService {
         relations: ['productos']
       });
 
-      console.log('Última remisión encontrada:', novedad); // Debug
+      console.log('Última remisión encontrada:', novedad);
       return novedad;
     } catch (error) {
       console.error('Error al buscar última remisión:', error);

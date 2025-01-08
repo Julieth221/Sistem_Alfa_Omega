@@ -51,7 +51,7 @@ export class ProductoNovedad {
   @Column({ nullable: true })
   accion_realizada!: string;
 
-  @Column({ name: 'foto_remision_url', nullable: true })
+  @Column({ type: 'text', nullable: true })
   foto_remision_url!: string;
 
   @ManyToOne(() => Novedad, novedad => novedad.productos)
