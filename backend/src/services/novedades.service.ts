@@ -55,135 +55,144 @@ export class NovedadesService {
 
         doc.pipe(writeStream);
 
-        // Título con estilo
+        // Título
         doc.font('Helvetica-Bold')
-           .fontSize(22)
+           .fontSize(20)
            .fillColor('#1976d2')
            .text('Mercancía con Problemas en la Recepción', {
              align: 'center'
            });
 
-        doc.moveDown(1.5);
+        doc.moveDown(2);
 
-        // Información General con mejor formato
+        // Información General
         doc.font('Helvetica-Bold')
-           .fontSize(16)
-           .fillColor('#333333')
+           .fontSize(14)
+           .fillColor('#000000')
            .text('Información General');
 
-        doc.moveDown(0.5);
+        doc.moveDown();
 
-        // Cuadro de información con mejor espaciado
+        // Tabla de información general
         const infoY = doc.y;
-        doc.font('Helvetica-Bold')
-           .fontSize(12)
-           .text('N° DE REMISIÓN:', 50, infoY)
-           .font('Helvetica')
-           .text(novedad.numero_remision, 180, infoY);
+        const startX = 50;
+        const colWidth = 200;
 
-        doc.font('Helvetica-Bold')
-           .text('FECHA:', 50, infoY + 25)
-           .font('Helvetica')
-           .text(new Date(novedad.fecha).toLocaleDateString('es-CO', {
-             year: 'numeric',
-             month: 'long',
-             day: 'numeric'
-           }), 180, infoY + 25);
+        // Dibujar líneas de la tabla de información
+        doc.lineWidth(0.5)
+           .moveTo(startX, infoY)
+           .lineTo(startX + colWidth * 2, infoY)
+           .stroke();
 
-        doc.font('Helvetica-Bold')
-           .text('DILIGENCIADO POR:', 50, infoY + 50)
-           .font('Helvetica')
-           .text(novedad.trabajador, 180, infoY + 50);
+        // Información General
+        const drawInfoRow = (label: string, value: string, y: number) => {
+          doc.font('Helvetica-Bold')
+             .text(label, startX, y)
+             .font('Helvetica')
+             .text(value, startX + colWidth, y);
+        };
 
-        doc.moveDown(3);
+        drawInfoRow('N° DE REMISIÓN:', novedad.numero_remision || '', infoY + 10);
+        drawInfoRow('FECHA:', new Date(novedad.fecha).toLocaleDateString('es-CO', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }), infoY + 30);
+        drawInfoRow('DILIGENCIADO POR:', novedad.trabajador, infoY + 50);
 
-        // Productos con mejor formato
+        doc.moveDown(4);
+
+        // Productos
         productos.forEach((producto, index) => {
-          // Título del producto con fondo
-          doc.fillColor('#1976d2')
-             .opacity(0.1)
-             .rect(50, doc.y, 495, 30)
-             .fill();
-
-          doc.opacity(1)
-             .fillColor('#1976d2')
-             .font('Helvetica-Bold')
+          doc.font('Helvetica-Bold')
              .fontSize(14)
-             .text(`PRODUCTO ${index + 1}`, 60, doc.y - 25);
+             .fillColor('#1976d2')
+             .text(`PRODUCTO ${index + 1}`);
+          
+          doc.moveDown();
 
-          doc.moveDown(1);
+          // Tabla de producto
+          const tableY = doc.y;
+          const tableStartX = startX;
+          const labelWidth = 150;
+          const valueWidth = 300;
+          const rowHeight = 25;
 
-          // Detalles del producto
-          const startY = doc.y;
-          doc.fontSize(12)
-             .fillColor('#333333');
+          // Función para dibujar fila de la tabla
+          const drawTableRow = (label: string, value: string, y: number) => {
+            // Dibuja el fondo de la fila
+            doc.fillColor('#f5f5f5')
+               .rect(tableStartX, y, labelWidth + valueWidth, rowHeight)
+               .fill();
+
+            // Dibuja el borde
+            doc.lineWidth(0.5)
+               .strokeColor('#000000')
+               .moveTo(tableStartX, y)
+               .lineTo(tableStartX + labelWidth + valueWidth, y)
+               .stroke();
+
+            // Escribe el contenido
+            doc.fillColor('#000000')
+               .font('Helvetica-Bold')
+               .text(label, tableStartX + 5, y + 7)
+               .font('Helvetica')
+               .text(value, tableStartX + labelWidth + 5, y + 7);
+          };
+
+          let currentY = tableY;
 
           // Referencia
-          doc.font('Helvetica-Bold')
-             .text('Referencia:', 50)
-             .font('Helvetica')
-             .text(producto.referencia, 180);
+          drawTableRow('Referencia:', producto.referencia, currentY);
+          currentY += rowHeight;
 
-          // Cantidades formateadas correctamente
-          let cantidadTexto = '';
-          if (producto.cantidad_cajas) cantidadTexto += `${producto.cantidad_cajas} cajas `;
-          if (producto.cantidad_m2) cantidadTexto += `${producto.cantidad_m2} m² `;
-          if (producto.cantidad_unidades) cantidadTexto += `${producto.cantidad_unidades} unidades`;
-
-          doc.font('Helvetica-Bold')
-             .text('Cantidad:', 50)
-             .font('Helvetica')
-             .text(cantidadTexto.trim() || 'No especificada', 180);
+          // Cantidad
+          const cantidades = [];
+          if (producto.cantidad_cajas) cantidades.push(`${producto.cantidad_cajas} cajas`);
+          if (producto.cantidad_m2) cantidades.push(`${producto.cantidad_m2} m²`);
+          if (producto.cantidad_unidades) cantidades.push(`${producto.cantidad_unidades} unidades`);
+          drawTableRow('Cantidad:', cantidades.join(', '), currentY);
+          currentY += rowHeight;
 
           // Problemas encontrados
-          doc.moveDown(0.5);
-          doc.font('Helvetica-Bold')
-             .text('Problemas encontrados:', 50);
-          
-          if(producto.desportillado) doc.font('Helvetica').text('• Desportillado', 70);
-          if(producto.golpeado) doc.font('Helvetica').text('• Golpeado', 70);
-          if(producto.rayado) doc.font('Helvetica').text('• Rayado', 70);
-          if(producto.incompleto) doc.font('Helvetica').text('• Incompleto', 70);
-          if(producto.loteado) doc.font('Helvetica').text('• Loteado', 70);
-          if(producto.otro) doc.font('Helvetica').text('• Otro', 70);
+          const problemas = [];
+          if (producto.desportillado) problemas.push('Desportillado');
+          if (producto.golpeado) problemas.push('Golpeado');
+          if (producto.rayado) problemas.push('Rayado');
+          if (producto.incompleto) problemas.push('Incompleto');
+          if (producto.loteado) problemas.push('Loteado');
+          if (producto.otro) problemas.push('Otro');
+          drawTableRow('Tipo de novedad:', problemas.join(', '), currentY);
+          currentY += rowHeight;
 
-          doc.moveDown(0.5);
+          // Descripción
+          drawTableRow('Descripción:', producto.descripcion || '', currentY);
+          currentY += rowHeight;
 
-          // Descripción y acción
-          doc.font('Helvetica-Bold')
-             .text('Descripción:', 50)
-             .font('Helvetica')
-             .text(producto.descripcion || 'No especificada', 180);
+          // Acción realizada
+          drawTableRow('Acción realizada:', producto.accion_realizada.toUpperCase().replace(/_/g, ' '), currentY);
+          currentY += rowHeight;
 
-          doc.font('Helvetica-Bold')
-             .text('Acción realizada:', 50)
-             .font('Helvetica')
-             .text(producto.accion_realizada.replace(/_/g, ' ').toUpperCase(), 180);
-
-          // Imagen del producto
+          // Imagen
           if (producto.foto_remision_url && producto.foto_remision_url !== '/uploads/sin_imagen.jpg') {
             try {
               const imagePath = path.join(process.cwd(), producto.foto_remision_url);
               if (fs.existsSync(imagePath)) {
-                doc.moveDown();
+                doc.moveDown(2);
                 doc.image(imagePath, {
-                  width: 200,
+                  fit: [300, 300],
                   align: 'center'
                 });
               }
             } catch (error) {
-              console.error('Error al agregar imagen:', error);
+              console.error('Error al cargar imagen:', error);
             }
           }
 
-          doc.moveDown(2);
+          doc.moveDown(3);
         });
 
-        // Pie de página con línea decorativa
-        doc.moveTo(50, doc.page.height - 50)
-           .lineTo(545, doc.page.height - 50)
-           .stroke();
-
+        // Pie de página
         doc.font('Helvetica')
            .fontSize(10)
            .fillColor('#666666')
@@ -201,13 +210,100 @@ export class NovedadesService {
     });
   }
 
+  // Método para guardar imágenes corregido
+  private async guardarImagen(base64Image: string, nombreArchivo: string): Promise<string> {
+    try {
+      const uploadDir = path.join(process.cwd(), 'uploads');
+      
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      const filePath = path.join(uploadDir, nombreArchivo);
+      
+      // Corregir el manejo de base64
+      const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+      
+      await fs.promises.writeFile(filePath, imageBuffer);
+      console.log('Imagen guardada en:', filePath);
+      
+      return `/uploads/${nombreArchivo}`;
+    } catch (error) {
+      console.error('Error al guardar imagen:', error);
+      throw error;
+    }
+  }
+
+  // Métodos auxiliares
+  private drawTable(doc: PDFKit.PDFDocument, table: any, x: number, y: number) {
+    const columnWidth = 495 / table.headers.length;
+    
+    // Dibuja encabezados
+    doc.font('Helvetica-Bold')
+       .fontSize(11);
+    
+    table.headers.forEach((header: string, i: number) => {
+      doc.text(header, x + (i * columnWidth), y, {
+        width: columnWidth,
+        align: 'left'
+      });
+    });
+
+    doc.moveDown();
+    
+    // Dibuja datos
+    doc.font('Helvetica')
+       .fontSize(10);
+    
+    // Asegurarse de que table.data sea un array y cada elemento sea un array
+    if (Array.isArray(table.data)) {
+      table.data.forEach((row: any) => {
+        if (Array.isArray(row)) {
+          row.forEach((cell: any, i: number) => {
+            const cellText = cell?.toString() || '';
+            doc.text(cellText, x + (i * columnWidth), doc.y, {
+              width: columnWidth,
+              align: 'left'
+            });
+          });
+        } else {
+          // Si row no es un array, tratarlo como un valor único
+          doc.text(row?.toString() || '', x, doc.y, {
+            width: columnWidth,
+            align: 'left'
+          });
+        }
+        doc.moveDown();
+      });
+    }
+  }
+
+  private formatCantidad(producto: ProductoNovedad): string {
+    const cantidades = [];
+    if (producto.cantidad_cajas) cantidades.push(`${producto.cantidad_cajas} cajas`);
+    if (producto.cantidad_m2) cantidades.push(`${producto.cantidad_m2} m²`);
+    if (producto.cantidad_unidades) cantidades.push(`${producto.cantidad_unidades} unidades`);
+    return cantidades.join(', ') || 'No especificada';
+  }
+
+  private formatProblemas(producto: ProductoNovedad): string {
+    const problemas = [];
+    if (producto.desportillado) problemas.push('Desportillado');
+    if (producto.golpeado) problemas.push('Golpeado');
+    if (producto.rayado) problemas.push('Rayado');
+    if (producto.incompleto) problemas.push('Incompleto');
+    if (producto.loteado) problemas.push('Loteado');
+    if (producto.otro) problemas.push('Otro');
+    return problemas.join(', ') || 'Ninguno';
+  }
+
   async create(novedadDto: INovedadDto): Promise<Novedad> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // Crear la novedad
       const novedad = this.novedadesRepository.create({
         fecha: novedadDto.fecha,
         trabajador: novedadDto.diligenciado_por,
