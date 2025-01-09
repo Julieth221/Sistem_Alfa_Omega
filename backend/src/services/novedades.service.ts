@@ -103,7 +103,7 @@ export class NovedadesService {
            .font('Helvetica')
            .text(novedad.trabajador, col1X + 130, currentY + 50);
 
-        doc.moveDown(4);
+        doc.moveDown(3);
 
         // Productos
         productos.forEach((producto, index) => {
@@ -217,12 +217,37 @@ export class NovedadesService {
           }
         });
 
+        // Después de todos los productos, agregar la imagen de remisión del proveedor
+        if (novedad.remision_proveedor) {
+          doc.addPage();
+          addHeader();
+
+          doc.fontSize(16)
+             .font('Helvetica-Bold')
+             .fillColor('#016165')
+             .text('Remisión del Proveedor', {
+               align: 'center'
+             });
+
+          doc.moveDown();
+
+          const imageWidth = 500;
+          const imageHeight = 600;
+          const pageWidth = doc.page.width;
+          const x = (pageWidth - imageWidth) / 2;
+
+          doc.image(novedad.remision_proveedor, x, doc.y, {
+            fit: [imageWidth, imageHeight],
+            align: 'center'
+          });
+        }
+
         let pages = doc.bufferedPageRange();
         for (let i = 0; i < pages.count; i++) {
           doc.switchToPage(i);
 
           // Ajustar la posición vertical del pie de página
-          const footerY = 780; // Cambia este valor para moverlo más abajo
+          const footerY = 760; // Cambia este valor para moverlo más abajo
           
           doc.moveTo(50, footerY - 10)
              .lineTo(550, footerY - 10)
@@ -290,6 +315,8 @@ export class NovedadesService {
         fecha: novedadDto.fecha,
         trabajador: novedadDto.diligenciado_por,
         usuario_id: novedadDto.usuario_id,
+        proveedor: novedadDto.proveedor,
+        remision_proveedor: novedadDto.remision_proveedor || '',
         numero_remision: await this.getUltimoNumeroRemision()
       });
 
@@ -330,7 +357,7 @@ export class NovedadesService {
             <div style="font-family: Arial, sans-serif; line-height: 1.6;">
               <h2 style="color: #016165;">Mercancía con Problemas en la Recepción</h2>
               
-              <p>Señor@s,</p>
+              <p>Señores ${novedad.proveedor},</p>
               
               <p>Cordial saludo,</p>
               
