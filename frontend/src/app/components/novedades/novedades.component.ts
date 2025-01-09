@@ -73,6 +73,34 @@ interface ProductoNovedad {
             <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
             <mat-datepicker #picker></mat-datepicker>
           </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Proveedor</mat-label>
+            <input matInput formControlName="proveedor" placeholder="Nombre del proveedor">
+            <mat-error *ngIf="novedadForm.get('proveedor')?.hasError('required')">
+              El proveedor es requerido
+            </mat-error>
+          </mat-form-field>
+
+          <div class="remision-proveedor-upload">
+            <label>Remisión del Proveedor</label>
+            <div class="file-upload-container" [class.has-file]="remisionProveedorUrl">
+              <button type="button" mat-stroked-button (click)="remisionProveedorInput.click()">
+                <mat-icon>upload_file</mat-icon>
+                {{ remisionProveedorUrl ? 'Cambiar imagen' : 'Subir imagen' }}
+              </button>
+              <input #remisionProveedorInput type="file" 
+                     (change)="onRemisionProveedorSelected($event)"
+                     accept="image/*" 
+                     style="display: none">
+              <span class="file-name" *ngIf="remisionProveedorUrl">
+                Imagen cargada
+              </span>
+            </div>
+            <mat-error *ngIf="novedadForm.get('remision_proveedor')?.hasError('required') && novedadForm.get('remision_proveedor')?.touched">
+              La remisión del proveedor es requerida
+            </mat-error>
+          </div>
         </div>
 
         <div formArrayName="productos">
@@ -163,6 +191,7 @@ export class NovedadesComponent implements OnInit {
   novedadForm!: FormGroup;
   numeroRemision: string = '';
   firmaDigitalUrl: string = 'assets/images/firma-digital.png';
+  remisionProveedorUrl: string | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -177,6 +206,8 @@ export class NovedadesComponent implements OnInit {
       fecha: ['', Validators.required],
       diligenciado_por: ['', Validators.required],
       correo: ['', [Validators.required, Validators.email]],
+      proveedor: ['', Validators.required],
+      remision_proveedor: [null, Validators.required],
       productos: this.fb.array([])
     });
 
@@ -331,5 +362,23 @@ export class NovedadesComponent implements OnInit {
     }
     // Cargar el nuevo número de remisión después de resetear
     this.cargarUltimoNumeroRemision();
+  }
+
+  async onRemisionProveedorSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      try {
+        const optimizedImage = await this.optimizeImage(file);
+        this.novedadForm.patchValue({
+          remision_proveedor: optimizedImage
+        });
+        this.remisionProveedorUrl = optimizedImage;
+      } catch (error) {
+        console.error('Error al procesar la imagen de remisión:', error);
+        this.snackBar.open('Error al procesar la imagen', 'Cerrar', {
+          duration: 3000
+        });
+      }
+    }
   }
 } 
