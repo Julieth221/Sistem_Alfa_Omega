@@ -19,8 +19,10 @@ export interface IProductoNovedadDto {
 export interface INovedadDto {
   fecha: Date;
   diligenciado_por: string;
+  usuario_id: number;
   correo: string;
-  usuario_id?: number;
+  proveedor: string;
+  remision_proveedor?: string; // URL de la imagen
   productos: {
     referencia: string;
     cantidad_m2: boolean;

@@ -2,7 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { ProductoNovedad } from './producto-novedad.entity';
 import { Usuario } from './usuario.entity';
 
-@Entity({ schema: 'SistemNovedad', name: 'novedades' })
+@Entity('novedades', { schema: 'SistemNovedad' })
 export class Novedad {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -19,15 +19,17 @@ export class Novedad {
   @Column({ name: 'usuario_id', nullable: true })
   usuario_id!: number;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @Column({ type: 'text' })
+  remision_proveedor!: string;
+
+  @Column({ length: 100 })
+  proveedor!: string;
+
+  @CreateDateColumn()
   created_at!: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn()
   updated_at!: Date;
-
-  @ManyToOne(() => Usuario, { nullable: true })
-  @JoinColumn({ name: 'usuario_id' })
-  usuario!: Usuario;
 
   @OneToMany(() => ProductoNovedad, productoNovedad => productoNovedad.novedad)
   productos!: ProductoNovedad[];
