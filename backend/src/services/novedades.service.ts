@@ -63,7 +63,7 @@ export class NovedadesService {
              });
           doc.moveDown(1);
         };
-
+        // Llamamos a addHeader solo una vez al principio
         addHeader();
         
         const infoY = doc.y;
@@ -99,54 +99,77 @@ export class NovedadesService {
            }), col1X + 130, currentY + 25);
 
         doc.font('Helvetica-Bold')
-           .text('DILIGENCIADO POR:', col1X, currentY)
+           .text('DILIGENCIADO POR:', col1X, currentY + 50)
            .font('Helvetica')
            .text(novedad.trabajador, col1X + 130, currentY + 50);
 
-        doc.moveDown(5);
+        doc.moveDown(4);
 
+        // Productos
         productos.forEach((producto, index) => {
-          if (doc.y > 650) {
+          // Nueva página para cada producto
+          if (index > 0) {
             doc.addPage();
-            addHeader();
           }
 
           const productoY = doc.y;
-          doc.rect(50, productoY, 500, 200)
-             .fillColor('#ffffff')
-             .fill()
-             .strokeColor('#016165')
-             .stroke();
-
+          
+          // Título del producto con línea inferior
           doc.fillColor('#016165')
              .fontSize(16)
              .font('Helvetica-Bold')
-             .text(`PRODUCTO ${index + 1}`, 70, productoY + 15);
+             .text(`PRODUCTO ${index + 1}`, 70, productoY);
 
-          let rowY = productoY + 45;
-          const colWidth = 240;
-          
-          const addRow = (label: string, value: string, indent = false) => {
+          doc.moveTo(70, productoY + 25)
+             .lineTo(550, productoY + 25)
+             .strokeColor('#016165')
+             .stroke();
+
+          // Configuración de la tabla
+          const startY = productoY + 40;
+          const labelX = 70;    // Etiquetas alineadas a la izquierda
+          const valueX = 220;   // Valores alineados a la izquierda con padding
+          const maxWidth = 300; // Ancho máximo para valores
+          let currentY = startY;
+
+          // Función helper para agregar filas
+          const addTableRow = (label: string, value: string | string[]) => {
+            // Etiqueta
             doc.font('Helvetica-Bold')
                .fontSize(11)
                .fillColor('#333333')
-               .text(label, indent ? 90 : 70, rowY);
+               .text(label, labelX, currentY);
             
-            doc.font('Helvetica')
-               .text(value, indent ? 200 : 180, rowY);
+            // Valor (puede ser string o array)
+            doc.font('Helvetica');
             
-            rowY += 20;
+            if (Array.isArray(value)) {
+              // Para arrays (como tipos de novedad), usar viñetas
+              const formattedValue = value.map(v => `• ${v}`).join('\n');
+              const textHeight = doc.heightOfString(formattedValue, { width: maxWidth });
+              doc.text(formattedValue, valueX, currentY, { width: maxWidth });
+              currentY += Math.max(textHeight, 20);
+            } else {
+              // Para strings simples
+              const textHeight = doc.heightOfString(value, { width: maxWidth });
+              doc.text(value, valueX, currentY, { width: maxWidth });
+              currentY += Math.max(textHeight, 20);
+            }
+            
+            currentY += 10; // Espacio entre filas
           };
 
-          addRow('Referencia:', producto.referencia);
+          // Referencia
+          addTableRow('Referencia:', producto.referencia);
 
-          if (producto.cantidad_m2 || producto.cantidad_cajas || producto.cantidad_unidades) {
-            addRow('Cantidad de la novedad:', '');
-            if (producto.cantidad_m2) addRow('M2:', producto.cantidad_m2.toString(), true);
-            if (producto.cantidad_cajas) addRow('Cajas:', producto.cantidad_cajas.toString(), true);
-            if (producto.cantidad_unidades) addRow('Unidades:', producto.cantidad_unidades.toString(), true);
-          }
+          // Cantidades
+          let cantidades = [];
+          if (producto.cantidad_m2) cantidades.push(`m²`);
+          if (producto.cantidad_cajas) cantidades.push(`cajas`);
+          if (producto.cantidad_unidades) cantidades.push(`und`);
+          addTableRow('Cantidad de la novedad:', cantidades.join(', ') || 'No especificada');
 
+          // Tipos de novedad
           const problemas = [];
           if (producto.roturas) problemas.push('Roturas');
           if (producto.desportillado) problemas.push('Desportillado');
@@ -155,48 +178,64 @@ export class NovedadesService {
           if (producto.incompleto) problemas.push('Incompleto');
           if (producto.loteado) problemas.push('Loteado');
           if (producto.otro) problemas.push('Otro');
-
-          if (problemas.length > 0) {
-            addRow('Tipo de novedad:', problemas.join(', '));
-          }
-
-          if (producto.descripcion) {
-            addRow('Descripción:', producto.descripcion);
-          }
           
-          addRow('Acción realizada:', this.formatearAccion(producto.accion_realizada));
+          addTableRow('Tipo de novedad:', problemas);
 
+          // Descripción
+          addTableRow('Descripción:', producto.descripcion || 'No especificada');
+
+          // Acción realizada
+          addTableRow('Acción realizada:', this.formatearAccion(producto.accion_realizada));
+
+          // Línea final de la tabla
+          doc.moveTo(70, currentY)
+             .lineTo(550, currentY)
+             .strokeColor('#016165')
+             .stroke();
+
+          doc.moveDown(2);
+
+          // Imagen
           if (producto.foto_remision_url) {
-            if (doc.y > 600) {
+            // Verificar espacio para la imagen
+            if (doc.y > 500) {
               doc.addPage();
               addHeader();
             }
 
-            doc.image(producto.foto_remision_url, {
-              fit: [400, 300],
+            const imageWidth = 400;
+            const imageHeight = 300;
+            const pageWidth = doc.page.width;
+            const x = (pageWidth - imageWidth) / 2;
+
+            doc.image(producto.foto_remision_url, x, doc.y, {
+              fit: [imageWidth, imageHeight],
               align: 'center'
             });
-          }
 
-          doc.moveDown(2);
+            doc.moveDown(2);
+          }
         });
 
         let pages = doc.bufferedPageRange();
         for (let i = 0; i < pages.count; i++) {
           doc.switchToPage(i);
+
+          // Ajustar la posición vertical del pie de página
+          const footerY = 780; // Cambia este valor para moverlo más abajo
           
-          doc.moveTo(50, 750)
-             .lineTo(550, 750)
+          doc.moveTo(50, footerY - 10)
+             .lineTo(550, footerY - 10)
              .strokeColor('#016165')
              .stroke();
 
           doc.fontSize(10)
              .fillColor('#666666')
-             .text('Alfa y Omega Acabados', 50, 760, {
+             .text('Alfa y Omega Enchapes y Acabados', 50, footerY, {
                align: 'center',
                width: 500
              })
-             .text(`Página ${i + 1} de ${pages.count}`, 500, 760, {
+             .text(`Página ${i + 1}`, 500, footerY, {
                align: 'right'
              });
         }
