@@ -302,3 +302,57 @@ button {
     font-size: 1.5rem;
   }
 } 
+// ... estilos existentes ...
+
+.form-header {
+  grid-template-columns: repeat(2, 1fr); // Actualizado para 4 campos
+  
+  .remision-proveedor-upload {
+    grid-column: span 2;
+    margin-top: 1rem;
+    
+    label {
+      color: rgba(0, 0, 0, 0.6);
+      font-size: 12px;
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .file-upload-container {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      border: 1px dashed #ccc;
+      border-radius: 4px;
+      background-color: #fafafa;
+
+      &.has-file {
+        border-color: #1976d2;
+        background-color: #e3f2fd;
+      }
+
+      button {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .file-name {
+        color: #1976d2;
+        font-size: 14px;
+      }
+    }
+  }
+}
+
+// Actualizar media queries
+@media (max-width: 960px) {
+  .form-header {
+    grid-template-columns: 1fr;
+    
+    .remision-proveedor-upload {
+      grid-column: 1;
+    }
+  }
+}
