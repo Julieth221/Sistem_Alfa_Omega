@@ -220,7 +220,7 @@ export class NovedadesService {
         // Después de todos los productos, agregar la imagen de remisión del proveedor
         if (novedad.remision_proveedor) {
           doc.addPage();
-          addHeader();
+          // addHeader();
 
           doc.fontSize(16)
              .font('Helvetica-Bold')
@@ -256,10 +256,10 @@ export class NovedadesService {
 
           doc.fontSize(10)
              .fillColor('#666666')
-             .text('Alfa y Omega Enchapes y Acabados', 50, footerY, {
-               align: 'center',
-               width: 500
-             })
+            //  .text('Alfa y Omega Enchapes y Acabados', 50, footerY, {
+            //    align: 'center',
+            //    width: 500
+            //  })
              .text(`Página ${i + 1}`, 500, footerY, {
                align: 'right'
              });
@@ -373,7 +373,7 @@ export class NovedadesService {
               
               <p>Cordialmente,</p>
               <p><strong>${savedNovedad.trabajador}</strong><br>
-              Alfa y Omega Acabados</p>
+              Alfa y Omega Enchapes y Acabados</p>
             </div>
           `,
           attachments: [
