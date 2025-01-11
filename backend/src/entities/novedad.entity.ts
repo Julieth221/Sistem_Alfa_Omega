@@ -10,26 +10,45 @@ export class Novedad {
   @Column({ unique: true })
   numero_remision!: string;
 
+  @Column({ length: 20 })
+  remision_factura!: string;
+
   @Column({ type: 'date' })
   fecha!: Date;
 
-  @Column({ nullable: true })
-  trabajador!: string;
+  @Column({ length: 20 })
+  nit!: string;
 
-  @Column({ name: 'usuario_id', nullable: true })
-  usuario_id!: number;
+  @Column({ length: 100 })
+  trabajador!: string;
+ 
+  @Column({ type: 'text' })
+  observaciones!: string;
+
+  @Column({ length: 100 })
+  aprobado_por!: string;
 
   @Column({ type: 'text' })
   remision_proveedor!: string;
 
+  @Column({ type: 'text' })
+  foto_estado!: string;
+
   @Column({ length: 100 })
   proveedor!: string;
+
+  @Column({ nullable: true })
+  usuario_id!: number;
 
   @CreateDateColumn()
   created_at!: Date;
 
   @UpdateDateColumn()
   updated_at!: Date;
+
+  @ManyToOne(() => Usuario)
+  @JoinColumn({ name: 'usuario_id' })
+  usuario!: Usuario;
 
   @OneToMany(() => ProductoNovedad, productoNovedad => productoNovedad.novedad)
   productos!: ProductoNovedad[];

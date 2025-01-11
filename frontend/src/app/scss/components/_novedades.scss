@@ -345,6 +345,72 @@ button {
     }
   }
 }
+.form-header {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  
+  mat-form-field {
+    width: 100%;
+  }
+
+  .remision-proveedor-upload,
+  .foto-estado-upload {
+    grid-column: span 2;
+  }
+}
+
+.datos-contacto {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.upload-section {
+  grid-column: span 2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 1rem;
+
+  .remision-proveedor-upload,
+  .foto-estado-upload {
+    label {
+      color: rgba(0, 0, 0, 0.6);
+      font-size: 12px;
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .file-upload-container {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      border: 1px dashed #ccc;
+      border-radius: 4px;
+      background-color: #fafafa;
+      transition: all 0.3s ease;
+
+      &.has-file {
+        border-color: #1976d2;
+        background-color: #e3f2fd;
+      }
+
+      button {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .file-name {
+        color: #1976d2;
+        font-size: 14px;
+      }
+    }
+  }
+}
+
 
 // Actualizar media queries
 @media (max-width: 960px) {
@@ -354,5 +420,9 @@ button {
     .remision-proveedor-upload {
       grid-column: 1;
     }
+  }
+
+  .upload-section {
+    grid-template-columns: 1fr;
   }
 }

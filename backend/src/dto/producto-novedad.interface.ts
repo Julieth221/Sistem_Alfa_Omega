@@ -23,6 +23,12 @@ export interface INovedadDto {
   correo: string;
   proveedor: string;
   remision_proveedor?: string; // URL de la imagen
+  remision_factura: string;
+  nit: string;
+  trabajador: string;
+  observaciones: string;
+  foto_estado?: string; // URL de la imagen
+  aprobado_por: string;
   productos: {
     referencia: string;
     cantidad_m2: boolean;
@@ -38,6 +44,7 @@ export interface INovedadDto {
     descripcion: string;
     accion_realizada: string;
     foto_remision?: string;
+    foto_devolucion?: string;
     correo?: string;
   }[];
 }

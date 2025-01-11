@@ -85,9 +85,9 @@ export class NovedadesService {
         let currentY = infoY + 45;
 
         doc.font('Helvetica-Bold')
-           .text('N° DE REMISIÓN:', col1X, currentY)
+           .text('N° DE REMISIÓN Y/O FACTURA:', col1X, currentY)
            .font('Helvetica')
-           .text(novedad.numero_remision, col1X + 130, currentY);
+           .text(novedad.remision_factura, col1X + 130, currentY);
 
         doc.font('Helvetica-Bold')
            .text('FECHA:', col1X, currentY + 25)
@@ -102,6 +102,11 @@ export class NovedadesService {
            .text('DILIGENCIADO POR:', col1X, currentY + 50)
            .font('Helvetica')
            .text(novedad.trabajador, col1X + 130, currentY + 50);
+
+        doc.font('Helvetica-Bold')
+           .text('APROBADO POR:', col1X, currentY + 75)
+           .font('Helvetica')
+           .text(novedad.aprobado_por, col1X + 130, currentY + 75);
 
         doc.moveDown(3);
 
@@ -311,13 +316,19 @@ export class NovedadesService {
     await queryRunner.startTransaction();
 
     try {
+      // Crear la novedad con todos los campos requeridos
       const novedad = this.novedadesRepository.create({
+        numero_remision: await this.getUltimoNumeroRemision(),
         fecha: novedadDto.fecha,
         trabajador: novedadDto.diligenciado_por,
         usuario_id: novedadDto.usuario_id,
+        remision_proveedor: novedadDto.remision_proveedor,
         proveedor: novedadDto.proveedor,
-        remision_proveedor: novedadDto.remision_proveedor || '',
-        numero_remision: await this.getUltimoNumeroRemision()
+        remision_factura: novedadDto.remision_factura,
+        nit: novedadDto.nit,
+        aprobado_por: novedadDto.aprobado_por,
+        observaciones: novedadDto.observaciones,
+        foto_estado: novedadDto.foto_estado
       });
 
       const savedNovedad = await queryRunner.manager.save(Novedad, novedad);
@@ -343,7 +354,7 @@ export class NovedadesService {
           productoNovedad.accion_realizada = producto.accion_realizada;
           productoNovedad.correo = novedadDto.correo;
           productoNovedad.foto_remision_url = producto.foto_remision || '';
-
+          productoNovedad.foto_devolucion = producto.foto_devolucion || '';
           const savedProducto = await queryRunner.manager.save(ProductoNovedad, productoNovedad);
           productosGuardados.push(savedProducto);
         }
@@ -361,7 +372,7 @@ export class NovedadesService {
               
               <p>Cordial saludo,</p>
               
-              <p>Por medio de la presente, nos permitimos informar que se han identificado novedades en la recepción de mercancía correspondiente a la remisión N° ${savedNovedad.numero_remision}.</p>
+              <p>Por medio de la presente, nos permitimos informar que se han identificado novedades en la recepción de mercancía correspondiente a la remisión N° ${savedNovedad.remision_factura}.</p>
               
               <p>Adjunto encontrarán:</p>
               <ul>
@@ -378,7 +389,7 @@ export class NovedadesService {
           `,
           attachments: [
             {
-              filename: `novedad_${savedNovedad.numero_remision}.pdf`,
+              filename: `novedad_${savedNovedad.remision_factura}.pdf`,
               path: pdfPath
             }
           ]

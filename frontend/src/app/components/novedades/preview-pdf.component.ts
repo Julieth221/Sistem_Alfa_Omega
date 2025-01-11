@@ -24,7 +24,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
         
         <div class="header-info">
           <div class="info-row">
-            <p><strong>N° DE REMISIÓN:</strong> {{ data.numeroRemision }}</p>
+            <p><strong>N° Remisión Factura:</strong> {{ data.remision_factura }}</p>
             <p><strong>FECHA:</strong> {{ data.formData.fecha | date:'dd/MM/yyyy' }}</p>
           </div>
         </div>

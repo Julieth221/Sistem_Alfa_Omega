@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -68,6 +68,11 @@ interface ProductoNovedad {
           </mat-form-field>
 
           <mat-form-field>
+            <mat-label>N° Remisión Factura</mat-label>
+            <input matInput formControlName="remision_factura">
+          </mat-form-field>
+
+          <mat-form-field>
             <mat-label>Fecha</mat-label>
             <input matInput [matDatepicker]="picker" formControlName="fecha">
             <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
@@ -75,31 +80,50 @@ interface ProductoNovedad {
           </mat-form-field>
 
           <mat-form-field>
-            <mat-label>Proveedor</mat-label>
-            <input matInput formControlName="proveedor" placeholder="Nombre del proveedor">
-            <mat-error *ngIf="novedadForm.get('proveedor')?.hasError('required')">
-              El proveedor es requerido
-            </mat-error>
+            <mat-label>NIT</mat-label>
+            <input matInput formControlName="nit">
           </mat-form-field>
 
-          <div class="remision-proveedor-upload">
-            <label>Remisión del Proveedor</label>
-            <div class="file-upload-container" [class.has-file]="remisionProveedorUrl">
-              <button type="button" mat-stroked-button (click)="remisionProveedorInput.click()">
-                <mat-icon>upload_file</mat-icon>
-                {{ remisionProveedorUrl ? 'Cambiar imagen' : 'Subir imagen' }}
-              </button>
-              <input #remisionProveedorInput type="file" 
-                     (change)="onRemisionProveedorSelected($event)"
-                     accept="image/*" 
-                     style="display: none">
-              <span class="file-name" *ngIf="remisionProveedorUrl">
-                Imagen cargada
-              </span>
+          <mat-form-field>
+            <mat-label>Proveedor</mat-label>
+            <input matInput formControlName="proveedor">
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Observaciones</mat-label>
+            <textarea matInput formControlName="observaciones" rows="3"></textarea>
+          </mat-form-field>
+
+          <div class="upload-section">
+            <div class="remision-proveedor-upload">
+              <label>Remisión del Proveedor</label>
+              <div class="file-upload-container" [class.has-file]="remisionProveedorUrl">
+                <button type="button" mat-stroked-button (click)="remisionProveedorInput.click()">
+                  <mat-icon>upload_file</mat-icon>
+                  {{ remisionProveedorUrl ? 'Cambiar imagen' : 'Subir imagen' }}
+                </button>
+                <input #remisionProveedorInput type="file" 
+                       (change)="onRemisionProveedorSelected($event)"
+                       accept="image/*" 
+                       style="display: none">
+                <span *ngIf="remisionProveedorUrl" class="file-name">Imagen cargada</span>
+              </div>
             </div>
-            <mat-error *ngIf="novedadForm.get('remision_proveedor')?.hasError('required') && novedadForm.get('remision_proveedor')?.touched">
-              La remisión del proveedor es requerida
-            </mat-error>
+
+            <div class="foto-estado-upload">
+              <label>Foto del Estado</label>
+              <div class="file-upload-container" [class.has-file]="fotoEstadoUrl">
+                <button type="button" mat-stroked-button (click)="fotoEstadoInput.click()">
+                  <mat-icon>upload_file</mat-icon>
+                  {{ fotoEstadoUrl ? 'Cambiar imagen' : 'Subir imagen' }}
+                </button>
+                <input #fotoEstadoInput type="file" 
+                       (change)="onFotoEstadoSelected($event)"
+                       accept="image/*" 
+                       style="display: none">
+                <span *ngIf="fotoEstadoUrl" class="file-name">Imagen cargada</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -145,8 +169,13 @@ interface ProductoNovedad {
               </div>
 
               <div class="file-upload">
-                <label>Anexar Remisión</label>
+                <label>Anexar foto del producto</label>
                 <input type="file" (change)="onFileSelected($event, i)" accept="image/*">
+              </div>
+
+              <div class="file-upload" *ngIf="producto.get('accion_realizada')?.value === 'rechazado_devuelto'">
+                <label>Foto de Devolución</label>
+                <input type="file" (change)="onFotoDevolucionSelected($event, i)" accept="image/*">
               </div>
             </div>
           </div>
@@ -161,6 +190,11 @@ interface ProductoNovedad {
             <mat-form-field>
               <mat-label>Diligenciado por</mat-label>
               <input matInput formControlName="diligenciado_por">
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Aprobado por</mat-label>
+              <input matInput formControlName="aprobado_por">
             </mat-form-field>
 
             <mat-form-field>
@@ -192,6 +226,7 @@ export class NovedadesComponent implements OnInit {
   numeroRemision: string = '';
   firmaDigitalUrl: string = 'assets/images/firma-digital.png';
   remisionProveedorUrl: string | null = null;
+  fotoEstadoUrl: string | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -203,15 +238,32 @@ export class NovedadesComponent implements OnInit {
 
   ngOnInit() {
     this.novedadForm = this.fb.group({
+      remision_factura: ['', Validators.required],
       fecha: ['', Validators.required],
-      diligenciado_por: ['', Validators.required],
-      correo: ['', [Validators.required, Validators.email]],
+      nit: ['', Validators.required],
       proveedor: ['', Validators.required],
+      observaciones: ['', Validators.required],
       remision_proveedor: [null, Validators.required],
+      foto_estado: [null, Validators.required],
+      diligenciado_por: ['', Validators.required],
+      aprobado_por: ['', Validators.required],
+      correo: ['', [Validators.required, Validators.email]],
       productos: this.fb.array([])
     });
 
     this.cargarUltimoNumeroRemision();
+
+    // Escuchar cambios en accion_realizada para mostrar/ocultar foto_devolucion
+    this.productos.controls.forEach(control => {
+      control.get('accion_realizada')?.valueChanges.subscribe(value => {
+        const productoGroup = control as FormGroup; // Cast a FormGroup
+        if (value === 'rechazado_devuelto') {
+          productoGroup.addControl('foto_devolucion', new FormControl(null, Validators.required));
+        } else {
+          productoGroup.removeControl('foto_devolucion');
+        }
+      });
+    });
   }
 
   get productos() {
@@ -233,10 +285,22 @@ export class NovedadesComponent implements OnInit {
       otro: [false],
       descripcion: ['', Validators.required],
       accion_realizada: ['', Validators.required],
-      foto_remision: [null]
+      foto_remision: [null, Validators.required],
+      foto_devolucion: [null]
     });
 
     this.productos.push(producto);
+
+    // Escuchar cambios en accion_realizada
+    const index = this.productos.length - 1;
+    this.productos.at(index).get('accion_realizada')?.valueChanges.subscribe(value => {
+      const productoGroup = this.productos.at(index) as FormGroup;
+      if (value === 'rechazado_devuelto') {
+        productoGroup.addControl('foto_devolucion', new FormControl(null, Validators.required));
+      } else {
+        productoGroup.removeControl('foto_devolucion');
+      }
+    });
   }
 
   async onFileSelected(event: any, index: number) {
@@ -328,8 +392,26 @@ export class NovedadesComponent implements OnInit {
       try {
         const formData = {
           ...this.novedadForm.value,
-          numero_remision: this.numeroRemision
+          numero_remision: this.numeroRemision,
+          remision_factura: this.novedadForm.get('remision_factura')?.value,
+          fecha: this.novedadForm.get('fecha')?.value,
+          nit: this.novedadForm.get('nit')?.value,
+          proveedor: this.novedadForm.get('proveedor')?.value,
+          observaciones: this.novedadForm.get('observaciones')?.value,
+          remision_proveedor: this.novedadForm.get('remision_proveedor')?.value,
+          foto_estado: this.novedadForm.get('foto_estado')?.value,
+          trabajador: this.novedadForm.get('diligenciado_por')?.value,
+          aprobado_por: this.novedadForm.get('aprobado_por')?.value,
+          // usuario_id: 1, // Asegúrate de obtener el ID del usuario actual
+          productos: this.productos.value.map((producto: any) => ({
+            ...producto,
+            correo: this.novedadForm.get('correo')?.value,
+            foto_devolucion: producto.accion_realizada === 'rechazado_devuelto' ? 
+                            producto.foto_devolucion : null
+          }))
         };
+
+        console.log('Datos a enviar:', formData); // Para debug
 
         const dialogRef = this.dialog.open(PreviewPdfComponent, {
           width: '800px',
@@ -347,11 +429,22 @@ export class NovedadesComponent implements OnInit {
           }
         });
       } catch (error) {
-        console.error('Error al enviar formulario:', error);
+        console.error('Error completo:', error); // Para ver el error completo
         this.snackBar.open('Error al crear la novedad', 'Cerrar', {
           duration: 3000
         });
       }
+    } else {
+      // Mostrar campos inválidos específicos
+      Object.keys(this.novedadForm.controls).forEach(key => {
+        const control = this.novedadForm.get(key);
+        if (control?.invalid) {
+          console.log(`Campo inválido: ${key}`, control.errors);
+          this.snackBar.open(`Campo requerido: ${key}`, 'Cerrar', {
+            duration: 3000
+          });
+        }
+      });
     }
   }
 
@@ -375,6 +468,42 @@ export class NovedadesComponent implements OnInit {
         this.remisionProveedorUrl = optimizedImage;
       } catch (error) {
         console.error('Error al procesar la imagen de remisión:', error);
+        this.snackBar.open('Error al procesar la imagen', 'Cerrar', {
+          duration: 3000
+        });
+      }
+    }
+  }
+
+  async onFotoEstadoSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      try {
+        const optimizedImage = await this.optimizeImage(file);
+        this.novedadForm.patchValue({
+          foto_estado: optimizedImage
+        });
+        this.fotoEstadoUrl = optimizedImage;
+      } catch (error) {
+        console.error('Error al procesar la imagen del estado:', error);
+        this.snackBar.open('Error al procesar la imagen', 'Cerrar', {
+          duration: 3000
+        });
+      }
+    }
+  }
+
+  async onFotoDevolucionSelected(event: any, index: number) {
+    const file = event.target.files[0];
+    if (file) {
+      try {
+        const optimizedImage = await this.optimizeImage(file);
+        const producto = this.productos.at(index);
+        producto.patchValue({
+          foto_devolucion: optimizedImage
+        });
+      } catch (error) {
+        console.error('Error al procesar la imagen de devolución:', error);
         this.snackBar.open('Error al procesar la imagen', 'Cerrar', {
           duration: 3000
         });

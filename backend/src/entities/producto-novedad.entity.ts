@@ -48,11 +48,14 @@ export class ProductoNovedad {
   @Column({ nullable: true })
   correo!: string;
 
-  @Column({ nullable: true })
+  @Column({ length: 50 })
   accion_realizada!: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true  })
   foto_remision_url!: string;
+
+  @Column({ type: 'text', nullable: true })
+  foto_devolucion!: string;
 
   @ManyToOne(() => Novedad, novedad => novedad.productos)
   @JoinColumn({ name: 'novedad_id' })
