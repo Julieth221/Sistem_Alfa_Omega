@@ -8,6 +8,7 @@ import { MailerService } from '@nestjs-modules/mailer';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as PDFDocument from 'pdfkit';
+import { Usuario } from '../entities/usuario.entity';
 
 @Injectable()
 export class NovedadesService {
@@ -16,8 +17,10 @@ export class NovedadesService {
     private novedadesRepository: Repository<Novedad>,
     @InjectRepository(ProductoNovedad)
     private productosNovedadRepository: Repository<ProductoNovedad>,
+    @InjectRepository(Usuario)
+    private usuarioRepository: Repository<Usuario>,
     private dataSource: DataSource,
-    private mailerService: MailerService
+    private mailerService: MailerService,
   ) {}
 
   async getUltimoNumeroRemision(): Promise<string> {
@@ -39,8 +42,8 @@ export class NovedadesService {
     }
   }
 
-  private async generarPDF(novedad: Novedad, productos: ProductoNovedad[]): Promise<string> {
-    return new Promise((resolve, reject) => {
+  private async generarPDF(novedad: Novedad, productos: ProductoNovedad[], usuario: Usuario): Promise<string> {
+    return new Promise(async (resolve, reject) => {
       try {
         const doc = new PDFDocument({
           size: 'A4',
@@ -201,48 +204,58 @@ export class NovedadesService {
           doc.moveDown(2);
 
           // Imagen
-          if (producto.foto_remision_url) {
-            // Verificar espacio para la imagen
-            if (doc.y > 500) {
-              doc.addPage();
-              addHeader();
-            }
-
-            const imageWidth = 400;
-            const imageHeight = 300;
-            const pageWidth = doc.page.width;
-            const x = (pageWidth - imageWidth) / 2;
-
-            doc.image(producto.foto_remision_url, x, doc.y, {
-              fit: [imageWidth, imageHeight],
-              align: 'center'
+          if (producto.foto_remision_urls.length > 0) {
+            doc.addPage();
+            doc.fontSize(16)
+               .text('Imágenes del Producto', { align: 'center' });
+            
+            const imagesPerRow = Math.min(producto.foto_remision_urls.length, 2);
+            const imageWidth = 250;
+            const imageHeight = 200;
+            const margin = 50;
+            
+            producto.foto_remision_urls.forEach((url, imgIndex) => {
+              const row = Math.floor(imgIndex / 2);
+              const col = imgIndex % 2;
+              const x = margin + (col * (imageWidth + margin));
+              const y = 100 + (row * (imageHeight + margin));
+              
+              doc.image(url, x, y, {
+                fit: [imageWidth, imageHeight]
+              });
             });
+          }
 
-            doc.moveDown(2);
+          // Mostrar imágenes de devolución si existen
+          if (producto.foto_devolucion_urls?.length > 0) {
+            // Similar al código anterior para fotos de remisión
           }
         });
 
         // Después de todos los productos, agregar la imagen de remisión del proveedor
-        if (novedad.remision_proveedor) {
+        if (novedad.remision_proveedor_urls.length > 0) {
           doc.addPage();
-          // addHeader();
+          doc.fontSize(14).text('Imágenes de Remisión del Proveedor', { align: 'center' });
+          
+          const imagesPerRow = Math.min(novedad.remision_proveedor_urls.length, 2);
+          for (let i = 0; i < novedad.remision_proveedor_urls.length; i++) {
+            const x = 50 + (i % 2) * 250;
+            const y = 100 + Math.floor(i / 2) * 300;
+            doc.image(novedad.remision_proveedor_urls[i], x, y, {
+              fit: [200, 200],
+              align: 'center'
+            });
+          }
+        }
 
-          doc.fontSize(16)
-             .font('Helvetica-Bold')
-             .fillColor('#016165')
-             .text('Remisión del Proveedor', {
-               align: 'center'
-             });
-
+        // Agregar firma digital automáticamente
+        if (usuario.firma_digital) {
+          doc.image(usuario.firma_digital.firma_url, {
+            fit: [200, 100],
+            align: 'center'
+          });
           doc.moveDown();
-
-          const imageWidth = 500;
-          const imageHeight = 600;
-          const pageWidth = doc.page.width;
-          const x = (pageWidth - imageWidth) / 2;
-
-          doc.image(novedad.remision_proveedor, x, doc.y, {
-            fit: [imageWidth, imageHeight],
+          doc.text(usuario.nombre_completo, {
             align: 'center'
           });
         }
@@ -316,29 +329,37 @@ export class NovedadesService {
     await queryRunner.startTransaction();
 
     try {
-      // Crear la novedad con todos los campos requeridos
-      const novedad = this.novedadesRepository.create({
-        numero_remision: await this.getUltimoNumeroRemision(),
-        fecha: novedadDto.fecha,
-        trabajador: novedadDto.diligenciado_por,
-        usuario_id: novedadDto.usuario_id,
-        remision_proveedor: novedadDto.remision_proveedor,
-        proveedor: novedadDto.proveedor,
-        remision_factura: novedadDto.remision_factura,
-        nit: novedadDto.nit,
-        aprobado_por: novedadDto.aprobado_por,
-        observaciones: novedadDto.observaciones,
-        foto_estado: novedadDto.foto_estado
+      const usuario = await this.usuarioRepository.findOne({
+        where: { id: novedadDto.usuario_id },
+        relations: ['firma_digital']
       });
+
+      if (!usuario) {
+        throw new Error('Usuario no encontrado');
+      }
+
+      // Crear la novedad
+      const novedad = new Novedad();
+      novedad.numero_remision = await this.getUltimoNumeroRemision();
+      novedad.fecha = novedadDto.fecha;
+      novedad.trabajador = usuario.nombre_completo;
+      novedad.usuario_id = novedadDto.usuario_id;
+      novedad.remision_proveedor_urls  = novedadDto.remision_proveedor_urls || [];
+      novedad.proveedor = novedadDto.proveedor;
+      novedad.remision_factura = novedadDto.remision_factura;
+      novedad.nit = novedadDto.nit;
+      novedad.aprobado_por = novedadDto.aprobado_por;
+      novedad.observaciones = novedadDto.observaciones;
+      novedad.foto_estado_urls = novedadDto.foto_estado_urls || [];
 
       const savedNovedad = await queryRunner.manager.save(Novedad, novedad);
 
       if (novedadDto.productos?.length > 0) {
-        const productosGuardados = [];
+        const productosGuardados: ProductoNovedad[] = [];
         
         for (const producto of novedadDto.productos) {
           const productoNovedad = new ProductoNovedad();
-          productoNovedad.novedad = savedNovedad;
+          productoNovedad.novedad_id = savedNovedad.id;
           productoNovedad.referencia = producto.referencia;
           productoNovedad.cantidad_m2 = producto.cantidad_m2;
           productoNovedad.cantidad_cajas = producto.cantidad_cajas;
@@ -353,14 +374,16 @@ export class NovedadesService {
           productoNovedad.descripcion = producto.descripcion;
           productoNovedad.accion_realizada = producto.accion_realizada;
           productoNovedad.correo = novedadDto.correo;
-          productoNovedad.foto_remision_url = producto.foto_remision || '';
-          productoNovedad.foto_devolucion = producto.foto_devolucion || '';
+          productoNovedad.foto_remision_urls = producto.foto_remision_urls || [];
+          productoNovedad.foto_devolucion_urls = producto.foto_devolucion_urls || [];
+          
           const savedProducto = await queryRunner.manager.save(ProductoNovedad, productoNovedad);
           productosGuardados.push(savedProducto);
         }
 
-        const pdfPath = await this.generarPDF(savedNovedad, productosGuardados);
+        const pdfPath = await this.generarPDF(savedNovedad, productosGuardados, usuario);
 
+        // Enviar email
         await this.mailerService.sendMail({
           to: novedadDto.correo,
           subject: 'Mercancía con Problemas en la Recepción',
@@ -387,15 +410,11 @@ export class NovedadesService {
               Alfa y Omega Enchapes y Acabados</p>
             </div>
           `,
-          attachments: [
-            {
-              filename: `novedad_${savedNovedad.remision_factura}.pdf`,
-              path: pdfPath
-            }
-          ]
+          attachments: [{
+            filename: `novedad_${savedNovedad.remision_factura}.pdf`,
+            path: pdfPath
+          }]
         });
-
-        fs.unlinkSync(pdfPath);
       }
 
       await queryRunner.commitTransaction();

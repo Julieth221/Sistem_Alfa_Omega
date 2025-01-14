@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, FormControl } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, FormControl, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -14,6 +14,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { PreviewPdfComponent } from './preview-pdf.component';
 import { NovedadesService } from '../../services/novedades.service';
 import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+import { Subject, takeUntil, filter } from 'rxjs';
+
 
 interface ApiResponse {
   message: string;
@@ -38,6 +41,14 @@ interface ProductoNovedad {
   foto_remision?: string;
   correo?: string;
 }
+
+interface FileItem {
+  name: string;
+  file: File;
+}
+
+type FileControlName = 'remision_proveedor_urls' | 'foto_estado_urls';
+type FileType = 'product' | 'devolution' | 'general' | FileControlName;
 
 @Component({
   selector: 'app-novedades',
@@ -94,34 +105,54 @@ interface ProductoNovedad {
             <textarea matInput formControlName="observaciones" rows="3"></textarea>
           </mat-form-field>
 
-          <div class="upload-section">
-            <div class="remision-proveedor-upload">
-              <label>Remisión del Proveedor</label>
-              <div class="file-upload-container" [class.has-file]="remisionProveedorUrl">
-                <button type="button" mat-stroked-button (click)="remisionProveedorInput.click()">
+          <div class="form-section">
+            <div class="file-upload-container">
+              <label>Remisión del Proveedor (Máx. 3 imágenes)</label>
+              <div class="file-input-wrapper">
+                <button type="button" mat-raised-button color="primary" (click)="fileInputRemision.click()">
                   <mat-icon>upload_file</mat-icon>
-                  {{ remisionProveedorUrl ? 'Cambiar imagen' : 'Subir imagen' }}
+                  Seleccionar archivos
                 </button>
-                <input #remisionProveedorInput type="file" 
-                       (change)="onRemisionProveedorSelected($event)"
+                <input #fileInputRemision type="file" 
+                       multiple 
                        accept="image/*" 
+                       (change)="onFileSelected($event, 'remision_proveedor_urls')"
                        style="display: none">
-                <span *ngIf="remisionProveedorUrl" class="file-name">Imagen cargada</span>
+              </div>
+              <div class="file-list" *ngIf="novedadForm.get('remision_proveedor_urls')?.value?.length">
+                <div *ngFor="let file of novedadForm.get('remision_proveedor_urls')?.value; let i = index" 
+                     class="file-item">
+                  <mat-icon>insert_drive_file</mat-icon>
+                  <span>{{ file.name }}</span>
+                  <button type="button" mat-icon-button (click)="removeFile('remision_proveedor_urls', i)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div class="foto-estado-upload">
-              <label>Foto del Estado</label>
-              <div class="file-upload-container" [class.has-file]="fotoEstadoUrl">
-                <button type="button" mat-stroked-button (click)="fotoEstadoInput.click()">
+            <div class="file-upload-container">
+              <label>Fotos del Estado (Máx. 3 imágenes)</label>
+              <div class="file-input-wrapper">
+                <button type="button" mat-raised-button color="primary" (click)="fileInputEstado.click()">
                   <mat-icon>upload_file</mat-icon>
-                  {{ fotoEstadoUrl ? 'Cambiar imagen' : 'Subir imagen' }}
+                  Seleccionar archivos
                 </button>
-                <input #fotoEstadoInput type="file" 
-                       (change)="onFotoEstadoSelected($event)"
+                <input #fileInputEstado type="file" 
+                       multiple 
                        accept="image/*" 
+                       (change)="onFileSelected($event, 'foto_estado_urls')"
                        style="display: none">
-                <span *ngIf="fotoEstadoUrl" class="file-name">Imagen cargada</span>
+              </div>
+              <div class="file-list" *ngIf="novedadForm.get('foto_estado_urls')?.value?.length">
+                <div *ngFor="let file of novedadForm.get('foto_estado_urls')?.value; let i = index" 
+                     class="file-item">
+                  <mat-icon>insert_drive_file</mat-icon>
+                  <span>{{ file.name }}</span>
+                  <button type="button" mat-icon-button (click)="removeFile('foto_estado_urls', i)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -170,12 +201,38 @@ interface ProductoNovedad {
 
               <div class="file-upload">
                 <label>Anexar foto del producto</label>
-                <input type="file" (change)="onFileSelected($event, i)" accept="image/*">
+                <input type="file" 
+                       multiple
+                       accept="image/*" 
+                       (change)="onProductFileSelected($event, i)">
+                <div class="file-list" *ngIf="producto.get('foto_remision')?.value?.length">
+                  <div *ngFor="let file of producto.get('foto_remision')?.value; let fileIndex = index" 
+                       class="file-item">
+                    <mat-icon>insert_drive_file</mat-icon>
+                    <span>{{ file.name }}</span>
+                    <button type="button" mat-icon-button (click)="removeProductFile(i, fileIndex, 'foto_remision')">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div class="file-upload" *ngIf="producto.get('accion_realizada')?.value === 'rechazado_devuelto'">
                 <label>Foto de Devolución</label>
-                <input type="file" (change)="onFotoDevolucionSelected($event, i)" accept="image/*">
+                <input type="file" 
+                       multiple
+                       accept="image/*" 
+                       (change)="onFotoDevolucionSelected($event, i)">
+                <div class="file-list" *ngIf="producto.get('foto_devolucion')?.value?.length">
+                  <div *ngFor="let file of producto.get('foto_devolucion')?.value; let fileIndex = index" 
+                       class="file-item">
+                    <mat-icon>insert_drive_file</mat-icon>
+                    <span>{{ file.name }}</span>
+                    <button type="button" mat-icon-button (click)="removeProductFile(i, fileIndex, 'foto_devolucion')">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -189,7 +246,7 @@ interface ProductoNovedad {
           <div class="datos-contacto">
             <mat-form-field>
               <mat-label>Diligenciado por</mat-label>
-              <input matInput formControlName="diligenciado_por">
+              <input matInput formControlName="diligenciado_por" readonly>
             </mat-form-field>
 
             <mat-form-field>
@@ -203,11 +260,10 @@ interface ProductoNovedad {
             </mat-form-field>
           </div>
 
-          <div class="firma-digital">
+          <div class="firma-digital" *ngIf="firmaDigitalUrl">
             <label>Firma Digital</label>
-            <div class="firma-placeholder" [class.has-image]="firmaDigitalUrl">
-              <img *ngIf="firmaDigitalUrl" src="assets/images/FirmaDigital.png" alt="Firma digital">
-              <span *ngIf="!firmaDigitalUrl">Haga clic para agregar firma</span>
+            <div class="firma-preview">
+              <img [src]="firmaDigitalUrl" alt="Firma digital">
             </div>
           </div>
         </div>
@@ -221,9 +277,12 @@ interface ProductoNovedad {
     </div>
   `,
 })
-export class NovedadesComponent implements OnInit {
+export class NovedadesComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+  private readonly maxFiles = 3;
   novedadForm!: FormGroup;
   numeroRemision: string = '';
+  currentUser: any;
   firmaDigitalUrl: string = 'assets/images/firma-digital.png';
   remisionProveedorUrl: string | null = null;
   fotoEstadoUrl: string | null = null;
@@ -233,10 +292,56 @@ export class NovedadesComponent implements OnInit {
     private dialog: MatDialog,
     private novedadesService: NovedadesService,
     private snackBar: MatSnackBar,
-    private router: Router
+    private router: Router,
+    private authService: AuthService
   ) {}
 
   ngOnInit() {
+    // Primero cargar el usuario
+    this.authService.currentUser$.subscribe({
+      next: (user) => {
+        console.log('Usuario cargado:', user);
+        this.currentUser = user;
+        if (user && this.novedadForm) {
+          const nombreCompleto = `${user.nombre} ${user.apellido}`;
+          console.log('Actualizando diligenciado_por con:', nombreCompleto);
+          this.novedadForm.patchValue({
+            diligenciado_por: nombreCompleto
+          });
+        }
+      },
+      error: (error) => console.error('Error al cargar usuario:', error)
+    });
+
+    // Luego inicializar el formulario
+    this.initForm();
+    
+    // Suscribirse a los cambios de las imágenes
+    this.novedadForm.get('remision_proveedor_urls')?.valueChanges.subscribe(urls => {
+      if (urls && urls.length > 0) {
+        this.novedadForm.patchValue({
+          remision_proveedor: urls[0]
+        });
+      }
+    });
+
+    this.novedadForm.get('foto_estado_urls')?.valueChanges.subscribe(urls => {
+      if (urls && urls.length > 0) {
+        this.novedadForm.patchValue({
+          foto_estado: urls[0]
+        });
+      }
+    });
+
+    this.cargarUltimoNumeroRemision();
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private initForm() {
     this.novedadForm = this.fb.group({
       remision_factura: ['', Validators.required],
       fecha: ['', Validators.required],
@@ -245,25 +350,63 @@ export class NovedadesComponent implements OnInit {
       observaciones: ['', Validators.required],
       remision_proveedor: [null, Validators.required],
       foto_estado: [null, Validators.required],
-      diligenciado_por: ['', Validators.required],
+      diligenciado_por: [{ 
+        value: this.currentUser ? `${this.currentUser.nombre} ${this.currentUser.apellido}` : '', 
+        disabled: true 
+      }],
       aprobado_por: ['', Validators.required],
       correo: ['', [Validators.required, Validators.email]],
       productos: this.fb.array([])
     });
 
+    this.novedadForm.get('remision_proveedor_urls')?.valueChanges.subscribe(urls => {
+      if (urls && urls.length > 0) {
+        this.novedadForm.patchValue({
+          remision_proveedor: urls[0]
+        });
+      }
+    });
+
+    this.novedadForm.get('foto_estado_urls')?.valueChanges.subscribe(urls => {
+      if (urls && urls.length > 0) {
+        this.novedadForm.patchValue({
+          foto_estado: urls[0]
+        });
+      }
+    });
+
     this.cargarUltimoNumeroRemision();
 
-    // Escuchar cambios en accion_realizada para mostrar/ocultar foto_devolucion
-    this.productos.controls.forEach(control => {
-      control.get('accion_realizada')?.valueChanges.subscribe(value => {
-        const productoGroup = control as FormGroup; // Cast a FormGroup
-        if (value === 'rechazado_devuelto') {
-          productoGroup.addControl('foto_devolucion', new FormControl(null, Validators.required));
-        } else {
-          productoGroup.removeControl('foto_devolucion');
-        }
+    
+  }
+
+  validateImageCount(control: AbstractControl): ValidationErrors | null {
+    const images = control.value as string[];
+    return images.length > this.maxFiles ? { maxImagesExceeded: true } : null;
+  }
+
+  async onImagesSelected(event: any, controlName: string) {
+    const files = event.target.files;
+    if (files) {
+      const currentUrls = this.novedadForm.get(controlName)?.value || [];
+      
+      if (currentUrls.length + files.length > this.maxFiles) {
+        this.snackBar.open(`Máximo ${this.maxFiles} imágenes permitidas`, 'Cerrar', {
+          duration: 3000
+        });
+        return;
+      }
+
+      const newUrls = [];
+      for (let i = 0; i < files.length; i++) {
+        const optimizedImage = await this.optimizeImage(files[i]);
+        newUrls.push(optimizedImage);
+      }
+
+      this.novedadForm.patchValue({
+        [controlName]: [...currentUrls, ...newUrls]
       });
-    });
+    }
   }
 
   get productos() {
@@ -291,7 +434,7 @@ export class NovedadesComponent implements OnInit {
 
     this.productos.push(producto);
 
-    // Escuchar cambios en accion_realizada
+    // Escuchar cambios en accion_realizada para el nuevo producto
     const index = this.productos.length - 1;
     this.productos.at(index).get('accion_realizada')?.valueChanges.subscribe(value => {
       const productoGroup = this.productos.at(index) as FormGroup;
@@ -303,29 +446,11 @@ export class NovedadesComponent implements OnInit {
     });
   }
 
-  async onFileSelected(event: any, index: number) {
-    const file = event.target.files[0];
-    if (file) {
-      try {
-        // Verificar el tamaño del archivo
-        if (file.size > 5000000) { // 5MB
-          this.snackBar.open('La imagen es demasiado grande. Máximo 5MB', 'Cerrar', {
-            duration: 3000
-          });
-          return;
-        }
-
-        // Optimizar la imagen antes de convertirla a base64
-        const optimizedImage = await this.optimizeImage(file);
-        const productos = this.novedadForm.get('productos') as FormArray;
-        const producto = productos.at(index);
-        producto.patchValue({ foto_remision: optimizedImage });
-      } catch (error) {
-        console.error('Error al procesar la imagen:', error);
-        this.snackBar.open('Error al procesar la imagen', 'Cerrar', {
-          duration: 3000
-        });
-      }
+  async onFileSelected(event: Event, controlName: FileType | number) {
+    if (typeof controlName === 'number') {
+      this.handleFileUpload(event, 'product', controlName);
+    } else if (controlName === 'remision_proveedor_urls' || controlName === 'foto_estado_urls') {
+      this.handleFileUpload(event, 'general', undefined, controlName);
     }
   }
 
@@ -388,64 +513,64 @@ export class NovedadesComponent implements OnInit {
   }
 
   async onSubmit() {
+    console.log('Form Value:', this.novedadForm.value);
+    console.log('Current User:', this.currentUser);
+
     if (this.novedadForm.valid) {
       try {
         const formData = {
-          ...this.novedadForm.value,
+          ...this.novedadForm.getRawValue(), // Usar getRawValue para incluir campos disabled
           numero_remision: this.numeroRemision,
-          remision_factura: this.novedadForm.get('remision_factura')?.value,
-          fecha: this.novedadForm.get('fecha')?.value,
-          nit: this.novedadForm.get('nit')?.value,
-          proveedor: this.novedadForm.get('proveedor')?.value,
-          observaciones: this.novedadForm.get('observaciones')?.value,
-          remision_proveedor: this.novedadForm.get('remision_proveedor')?.value,
-          foto_estado: this.novedadForm.get('foto_estado')?.value,
-          trabajador: this.novedadForm.get('diligenciado_por')?.value,
-          aprobado_por: this.novedadForm.get('aprobado_por')?.value,
-          // usuario_id: 1, // Asegúrate de obtener el ID del usuario actual
+          diligenciado_por: this.currentUser ? `${this.currentUser.nombre} ${this.currentUser.apellido}` : '',
+          remision_proveedor: this.remisionProveedorUrl,
+          foto_estado: this.fotoEstadoUrl,
           productos: this.productos.value.map((producto: any) => ({
             ...producto,
-            correo: this.novedadForm.get('correo')?.value,
-            foto_devolucion: producto.accion_realizada === 'rechazado_devuelto' ? 
-                            producto.foto_devolucion : null
+            correo: this.novedadForm.get('correo')?.value
           }))
         };
 
-        console.log('Datos a enviar:', formData); // Para debug
+        console.log('Datos para preview:', formData);
 
+        // Solo mostrar el preview sin intentar crear la novedad
         const dialogRef = this.dialog.open(PreviewPdfComponent, {
           width: '800px',
+          height: '90vh',
           data: {
             formData,
+            remision_factura: formData.remision_factura,
             numeroRemision: this.numeroRemision
           }
         });
 
-        dialogRef.afterClosed().subscribe(async result => {
+        // La creación de la novedad se maneja en el PreviewPdfComponent
+        dialogRef.afterClosed().subscribe(result => {
           if (result?.action === 'success') {
-            // Recargar el número de remisión después de crear la novedad
-            await this.cargarUltimoNumeroRemision();
+            this.cargarUltimoNumeroRemision();
             this.resetForm();
           }
         });
       } catch (error) {
-        console.error('Error completo:', error); // Para ver el error completo
-        this.snackBar.open('Error al crear la novedad', 'Cerrar', {
+        console.error('Error al mostrar preview:', error);
+        this.snackBar.open('Error al mostrar la vista previa', 'Cerrar', {
           duration: 3000
         });
       }
     } else {
-      // Mostrar campos inválidos específicos
-      Object.keys(this.novedadForm.controls).forEach(key => {
-        const control = this.novedadForm.get(key);
-        if (control?.invalid) {
-          console.log(`Campo inválido: ${key}`, control.errors);
-          this.snackBar.open(`Campo requerido: ${key}`, 'Cerrar', {
-            duration: 3000
-          });
-        }
-      });
+      this.showDetailedFormErrors();
     }
+  }
+
+  private showDetailedFormErrors() {
+    Object.keys(this.novedadForm.controls).forEach(key => {
+      const control = this.novedadForm.get(key);
+      if (control?.invalid) {
+        console.log(`Campo inválido: ${key}`, control.errors);
+        this.snackBar.open(`Campo requerido: ${key}`, 'Cerrar', {
+          duration: 3000
+        });
+      }
+    });
   }
 
   private resetForm() {
@@ -509,5 +634,101 @@ export class NovedadesComponent implements OnInit {
         });
       }
     }
+  }
+
+  removeImage(controlName: string, index: number) {
+    const control = this.novedadForm.get(controlName);
+    if (control) {
+      const currentUrls = [...control.value];
+      currentUrls.splice(index, 1);
+      control.setValue(currentUrls);
+    }
+  }
+
+
+
+  onProductFileSelected(event: Event, index: number) {
+    this.handleFileUpload(event, 'product', index);
+  }
+
+
+  
+
+  removeFile(controlName: FileType, index: number, fileIndex?: number) {
+    let control: AbstractControl | null;
+
+    if (controlName === 'remision_proveedor_urls' || controlName === 'foto_estado_urls') {
+      control = this.novedadForm.get(controlName);
+      if (control) {
+        const files = [...control.value];
+        files.splice(index, 1);
+        control.setValue(files);
+      }
+    } else {
+      const producto = this.productos.at(index);
+      control = producto.get(controlName === 'product' ? 'foto_remision' : 'foto_devolucion');
+      if (control && fileIndex !== undefined) {
+        const files = [...control.value];
+        files.splice(fileIndex, 1);
+        control.setValue(files);
+      }
+    }
+  }
+
+  handleFileUpload(
+    event: Event, 
+    type: 'product' | 'devolution' | 'general',
+    index?: number,
+    controlName?: FileControlName
+  ) {
+    const input = event.target as HTMLInputElement;
+    const files = input.files;
+    if (!files) return;
+
+    let control: AbstractControl | null;
+    let currentFiles: FileItem[];
+
+    if (type === 'general' && controlName) {
+      control = this.novedadForm.get(controlName);
+    } else if (index !== undefined) {
+      control = this.productos.at(index).get(
+        type === 'product' ? 'foto_remision' : 'foto_devolucion'
+      );
+    } else {
+      return;
+    }
+
+    if (!control) return;
+    currentFiles = control.value || [];
+
+    if (currentFiles.length + files.length > this.maxFiles) {
+      this.snackBar.open(`Máximo ${this.maxFiles} archivos permitidos`, 'Cerrar', {
+        duration: 3000
+      });
+      return;
+    }
+
+    const newFiles: FileItem[] = Array.from(files).map(file => ({
+      name: file.name,
+      file: file
+    }));
+
+    if (type === 'general' && controlName) {
+      this.novedadForm.patchValue({
+        [controlName]: [...currentFiles, ...newFiles]
+      });
+    } else if (index !== undefined) {
+      const fieldName = type === 'product' ? 'foto_remision' : 'foto_devolucion';
+      this.productos.at(index).patchValue({
+        [fieldName]: [...currentFiles, ...newFiles]
+      });
+    }
+  }
+
+  removeProductFile(index: number, fileIndex: number, field: 'foto_remision' | 'foto_devolucion') {
+    const producto = this.productos.at(index);
+    const files = [...producto.get(field)?.value || []];
+    files.splice(fileIndex, 1);
+    producto.patchValue({ [field]: files });
   }
 } 
