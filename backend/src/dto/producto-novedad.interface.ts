@@ -12,7 +12,8 @@ export interface IProductoNovedadDto {
   otro?: boolean;
   descripcion?: string;
   accion_realizada?: 'rechazado_devuelto' | 'rechazado_descargado';
-  foto_remision_url: string;
+  foto_remision_urls?: string[];
+  foto_devolucion_urls?: string[];
   correo: string;
 } 
 
@@ -22,12 +23,12 @@ export interface INovedadDto {
   usuario_id: number;
   correo: string;
   proveedor: string;
-  remision_proveedor?: string; // URL de la imagen
+  remision_proveedor_urls?: string[]; // URL de la imagen
   remision_factura: string;
   nit: string;
   trabajador: string;
   observaciones: string;
-  foto_estado?: string; // URL de la imagen
+  foto_estado_urls?: string[]; // URL de la imagen
   aprobado_por: string;
   productos: {
     referencia: string;
@@ -43,8 +44,8 @@ export interface INovedadDto {
     otro: boolean;
     descripcion: string;
     accion_realizada: string;
-    foto_remision?: string;
-    foto_devolucion?: string;
+    foto_remision_urls?: string[];
+    foto_devolucion_urls?: string[];
     correo?: string;
   }[];
 }

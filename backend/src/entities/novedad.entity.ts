@@ -28,11 +28,11 @@ export class Novedad {
   @Column({ length: 100 })
   aprobado_por!: string;
 
-  @Column({ type: 'text' })
-  remision_proveedor!: string;
+  @Column('text', { array: true })
+  remision_proveedor_urls!: string[];
 
-  @Column({ type: 'text' })
-  foto_estado!: string;
+  @Column('text', { array: true })
+  foto_estado_urls!: string[];
 
   @Column({ length: 100 })
   proveedor!: string;
