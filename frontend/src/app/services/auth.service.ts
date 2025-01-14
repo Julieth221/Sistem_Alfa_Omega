@@ -15,7 +15,7 @@ export interface LoginResponse {
 })
 export class AuthService {
   private readonly API_URL = `${environment.apiUrl}/auth`;
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  private currentUserSubject = new BehaviorSubject<any>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(
@@ -62,7 +62,7 @@ export class AuthService {
     return !!this.getToken();
   }
 
-  getCurrentUser(): User | null {
-    return this.currentUserSubject.value;
+  getCurrentUser(): Observable<any> {
+    return this.currentUser$;
   }
 } 

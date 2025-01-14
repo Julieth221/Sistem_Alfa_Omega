@@ -8,7 +8,7 @@ import { map, catchError } from 'rxjs/operators';
   providedIn: 'root'
 })
 export class NovedadesService {
-  private apiUrl = environment.apiUrl;
+  private apiUrl = 'tu_url_api';
 
   constructor(private http: HttpClient) {}
 
@@ -23,10 +23,17 @@ export class NovedadesService {
       );
   }
 
-  createNovedad(data: any): Observable<any> {
-    const token = localStorage.getItem('token');
-    const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
-    
-    return this.http.post(`${this.apiUrl}/novedades`, data, { headers });
+  createNovedad(formData: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/novedades`, formData);
+  }
+
+  getPdfPreview(formData: any): Observable<Blob> {
+    return this.http.post(`${this.apiUrl}/novedades/preview`, formData, {
+      responseType: 'blob'
+    });
+  }
+
+  submitNovedad(formData: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/novedades`, formData);
   }
 }
