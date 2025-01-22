@@ -42,8 +42,8 @@ export class ProductoNovedad {
   @Column({ default: false })
   otro!: boolean;
 
-  @Column({ nullable: true })
-  descripcion!: string;
+  @Column({ type: 'text', nullable: true })
+  descripcion?: string;
 
   @Column({ nullable: true })
   correo!: string;
@@ -51,11 +51,17 @@ export class ProductoNovedad {
   @Column({ length: 50 })
   accion_realizada!: string;
 
-  @Column('simple-array')
-  foto_remision_urls!: string[];
+  @Column('jsonb', { nullable: false })
+  foto_remision_urls!: Array<{
+    name: string;
+    url: string;
+  }>;
 
-  @Column('simple-array')
-  foto_devolucion_urls!: string[];
+  @Column('jsonb', { nullable: true })
+  foto_devolucion_urls!: Array<{
+    name: string;
+    url: string;
+  }>;
 
   @ManyToOne(() => Novedad, novedad => novedad.productos)
   @JoinColumn({ name: 'novedad_id' })

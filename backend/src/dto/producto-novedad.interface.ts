@@ -1,3 +1,8 @@
+export interface IImagenDto {
+  name: string;
+  url: string;
+}
+
 export interface IProductoNovedadDto {
   referencia: string;
   cantidad_m2?: boolean;
@@ -12,8 +17,8 @@ export interface IProductoNovedadDto {
   otro?: boolean;
   descripcion?: string;
   accion_realizada?: 'rechazado_devuelto' | 'rechazado_descargado';
-  foto_remision_urls?: string[];
-  foto_devolucion_urls?: string[];
+  foto_remision_urls?: IImagenDto[];
+  foto_devolucion_urls?: IImagenDto[];
   correo: string;
 } 
 
@@ -23,12 +28,12 @@ export interface INovedadDto {
   usuario_id: number;
   correo: string;
   proveedor: string;
-  remision_proveedor_urls?: string[]; // URL de la imagen
+  remision_proveedor_urls?: IImagenDto[]; 
   remision_factura: string;
   nit: string;
   trabajador: string;
   observaciones: string;
-  foto_estado_urls?: string[]; // URL de la imagen
+  foto_estado_urls?: IImagenDto[]; 
   aprobado_por: string;
   productos: {
     referencia: string;
@@ -44,8 +49,8 @@ export interface INovedadDto {
     otro: boolean;
     descripcion: string;
     accion_realizada: string;
-    foto_remision_urls?: string[];
-    foto_devolucion_urls?: string[];
+    foto_remision_urls?: IImagenDto[];
+    foto_devolucion_urls?: IImagenDto[];
     correo?: string;
   }[];
 }
