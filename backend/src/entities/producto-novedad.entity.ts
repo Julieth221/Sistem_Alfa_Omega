@@ -51,10 +51,10 @@ export class ProductoNovedad {
   @Column({ length: 50 })
   accion_realizada!: string;
 
-  @Column('text', { array: true })
+  @Column('simple-array')
   foto_remision_urls!: string[];
 
-  @Column('text', { array: true, nullable: true })
+  @Column('simple-array')
   foto_devolucion_urls!: string[];
 
   @ManyToOne(() => Novedad, novedad => novedad.productos)

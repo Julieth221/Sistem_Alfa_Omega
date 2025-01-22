@@ -7,6 +7,7 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatIconModule } from '@angular/material/icon';
+import { NgxExtendedPdfViewerModule } from 'ngx-extended-pdf-viewer';
 
 import { AppComponent } from './app.component';
 
@@ -35,7 +36,8 @@ import { AppComponent } from './app.component';
     MatDialogModule,
     MatButtonModule,
     MatSnackBarModule,
-    MatIconModule
+    MatIconModule,
+    NgxExtendedPdfViewerModule
   ],
   providers: [],
   bootstrap: [AppComponent]

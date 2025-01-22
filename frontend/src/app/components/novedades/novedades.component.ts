@@ -15,7 +15,9 @@ import { PreviewPdfComponent } from './preview-pdf.component';
 import { NovedadesService } from '../../services/novedades.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { Subject, takeUntil, filter } from 'rxjs';
+import { Subject, takeUntil, filter, firstValueFrom } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { NgxExtendedPdfViewerModule } from 'ngx-extended-pdf-viewer';
 
 
 interface ApiResponse {
@@ -45,6 +47,7 @@ interface ProductoNovedad {
 interface FileItem {
   name: string;
   file: File;
+  url?: string;
 }
 
 type FileControlName = 'remision_proveedor_urls' | 'foto_estado_urls';
@@ -65,7 +68,9 @@ type FileType = 'product' | 'devolution' | 'general' | FileControlName;
     MatDialogModule,
     MatSnackBarModule,
     MatSelectModule,
-    MatIconModule
+    MatIconModule,
+    MatIconModule,
+    NgxExtendedPdfViewerModule
   ],
   template: `
     <div class="novedades-container">
@@ -277,7 +282,7 @@ type FileType = 'product' | 'devolution' | 'general' | FileControlName;
     </div>
   `,
 })
-export class NovedadesComponent implements OnInit, OnDestroy {
+export class NovedadesComponent implements OnInit, OnDestroy{
   private destroy$ = new Subject<void>();
   private readonly maxFiles = 3;
   novedadForm!: FormGroup;
@@ -286,6 +291,7 @@ export class NovedadesComponent implements OnInit, OnDestroy {
   firmaDigitalUrl: string = 'assets/images/firma-digital.png';
   remisionProveedorUrl: string | null = null;
   fotoEstadoUrl: string | null = null;
+  pdfUrl: string = '';
 
   constructor(
     private fb: FormBuilder,
@@ -315,25 +321,6 @@ export class NovedadesComponent implements OnInit, OnDestroy {
 
     // Luego inicializar el formulario
     this.initForm();
-    
-    // Suscribirse a los cambios de las imágenes
-    this.novedadForm.get('remision_proveedor_urls')?.valueChanges.subscribe(urls => {
-      if (urls && urls.length > 0) {
-        this.novedadForm.patchValue({
-          remision_proveedor: urls[0]
-        });
-      }
-    });
-
-    this.novedadForm.get('foto_estado_urls')?.valueChanges.subscribe(urls => {
-      if (urls && urls.length > 0) {
-        this.novedadForm.patchValue({
-          foto_estado: urls[0]
-        });
-      }
-    });
-
-    this.cargarUltimoNumeroRemision();
   }
 
   ngOnDestroy() {
@@ -356,8 +343,11 @@ export class NovedadesComponent implements OnInit, OnDestroy {
       }],
       aprobado_por: ['', Validators.required],
       correo: ['', [Validators.required, Validators.email]],
+      remision_proveedor_urls: [[], [Validators.required, this.validateImageCount.bind(this)]],
+      foto_estado_urls: [[], [Validators.required, this.validateImageCount.bind(this)]],
       productos: this.fb.array([])
     });
+    
 
     this.novedadForm.get('remision_proveedor_urls')?.valueChanges.subscribe(urls => {
       if (urls && urls.length > 0) {
@@ -409,7 +399,7 @@ export class NovedadesComponent implements OnInit, OnDestroy {
     }
   }
 
-  get productos() {
+  get productos(): FormArray {
     return this.novedadForm.get('productos') as FormArray;
   }
 
@@ -428,29 +418,87 @@ export class NovedadesComponent implements OnInit, OnDestroy {
       otro: [false],
       descripcion: ['', Validators.required],
       accion_realizada: ['', Validators.required],
-      foto_remision: [null, Validators.required],
-      foto_devolucion: [null]
+      foto_remision: [[], [Validators.required, this.validateImageCount.bind(this)]],
+      foto_devolucion: [[], this.validateImageCount.bind(this)]
     });
 
     this.productos.push(producto);
 
-    // Escuchar cambios en accion_realizada para el nuevo producto
+    // Escuchar cambios en accion_realizada
     const index = this.productos.length - 1;
     this.productos.at(index).get('accion_realizada')?.valueChanges.subscribe(value => {
       const productoGroup = this.productos.at(index) as FormGroup;
       if (value === 'rechazado_devuelto') {
-        productoGroup.addControl('foto_devolucion', new FormControl(null, Validators.required));
+        productoGroup.get('foto_devolucion')?.setValidators([Validators.required, this.validateImageCount.bind(this)]);
       } else {
-        productoGroup.removeControl('foto_devolucion');
+        productoGroup.get('foto_devolucion')?.clearValidators();
+        productoGroup.get('foto_devolucion')?.setValue([]);
       }
+      productoGroup.get('foto_devolucion')?.updateValueAndValidity();
     });
   }
 
+  private async handleImageUpload(files: FileList, currentFiles: FileItem[] = []): Promise<FileItem[]> {
+    if (currentFiles.length + files.length > this.maxFiles) {
+      this.snackBar.open(`Máximo ${this.maxFiles} imágenes permitidas`, 'Cerrar', {
+        duration: 3000
+      });
+      return currentFiles;
+    }
+
+    const newFiles: FileItem[] = [];
+    for (const file of Array.from(files)) {
+      try {
+        const optimizedImage = await this.optimizeImage(file);
+        newFiles.push({
+          name: file.name,
+          file: file,
+          url: optimizedImage
+        });
+      } catch (error) {
+        console.error('Error al procesar imagen:', error);
+      }
+    }
+
+    return [...currentFiles, ...newFiles];
+  }
+
   async onFileSelected(event: Event, controlName: FileType | number) {
-    if (typeof controlName === 'number') {
-      this.handleFileUpload(event, 'product', controlName);
-    } else if (controlName === 'remision_proveedor_urls' || controlName === 'foto_estado_urls') {
-      this.handleFileUpload(event, 'general', undefined, controlName);
+    const files = (event.target as HTMLInputElement).files;
+    if (!files) return;
+
+    try {
+      if (typeof controlName === 'string') {
+        // Para remision_proveedor_urls y foto_estado_urls
+        const control = this.novedadForm.get(controlName);
+        if (!control) return;
+
+        const currentFiles = control.value || [];
+        const updatedFiles = await this.handleImageUpload(files, currentFiles);
+        
+        control.setValue(updatedFiles);
+        
+        // Actualizar URL principal si es necesario
+        if (updatedFiles.length > 0 && updatedFiles[0].url) {
+          if (controlName === 'remision_proveedor_urls') {
+            this.remisionProveedorUrl = updatedFiles[0].url || null;
+          } else if (controlName === 'foto_estado_urls') {
+            this.fotoEstadoUrl = updatedFiles[0].url || null;
+          }
+        }
+      } else {
+        // Para fotos de productos
+        const producto = this.productos.at(controlName);
+        const currentFiles = producto.get('foto_remision')?.value || [];
+        const updatedFiles = await this.handleImageUpload(files, currentFiles);
+        
+        producto.patchValue({
+          foto_remision: updatedFiles
+        });
+      }
+    } catch (error) {
+      console.error('Error al procesar imágenes:', error);
+      this.snackBar.open('Error al procesar las imágenes', 'Cerrar', { duration: 3000 });
     }
   }
 
@@ -513,64 +561,50 @@ export class NovedadesComponent implements OnInit, OnDestroy {
   }
 
   async onSubmit() {
-    console.log('Form Value:', this.novedadForm.value);
-    console.log('Current User:', this.currentUser);
-
     if (this.novedadForm.valid) {
       try {
+        console.log('Formulario válido, generando vista previa del PDF...');
+        
+        // Preparar los datos del formulario
         const formData = {
-          ...this.novedadForm.getRawValue(), // Usar getRawValue para incluir campos disabled
-          numero_remision: this.numeroRemision,
-          diligenciado_por: this.currentUser ? `${this.currentUser.nombre} ${this.currentUser.apellido}` : '',
-          remision_proveedor: this.remisionProveedorUrl,
-          foto_estado: this.fotoEstadoUrl,
-          productos: this.productos.value.map((producto: any) => ({
-            ...producto,
-            correo: this.novedadForm.get('correo')?.value
-          }))
+          ...this.novedadForm.value,
+          remision_factura: this.numeroRemision,
+          usuario_id: this.currentUser?.id, // Asegúrate de tener el usuario actual
+          fecha: new Date(this.novedadForm.get('fecha')?.value).toISOString()
         };
 
-        console.log('Datos para preview:', formData);
+        console.log('Formulario preparado:', formData);
+        console.log('Generando vista previa del PDF...');
 
-        // Solo mostrar el preview sin intentar crear la novedad
         const dialogRef = this.dialog.open(PreviewPdfComponent, {
-          width: '800px',
+          width: '90vw',
           height: '90vh',
-          data: {
-            formData,
-            remision_factura: formData.remision_factura,
-            numeroRemision: this.numeroRemision
-          }
+          data: { formData }
         });
 
-        // La creación de la novedad se maneja en el PreviewPdfComponent
-        dialogRef.afterClosed().subscribe(result => {
+        dialogRef.afterClosed().subscribe(async result => {
+          console.log('Resultado del diálogo:', result);
+          
           if (result?.action === 'success') {
-            this.cargarUltimoNumeroRemision();
+            console.log('Novedad creada exitosamente');
+            await this.cargarUltimoNumeroRemision();
             this.resetForm();
+          } else if (result?.action === 'modify') {
+            console.log('Usuario solicitó modificar la novedad');
+            // No es necesario hacer nada, el formulario mantiene los datos
           }
         });
       } catch (error) {
-        console.error('Error al mostrar preview:', error);
-        this.snackBar.open('Error al mostrar la vista previa', 'Cerrar', {
+        console.error('Error al enviar formulario:', error);
+        this.snackBar.open('Error al crear la novedad', 'Cerrar', {
           duration: 3000
         });
       }
     } else {
-      this.showDetailedFormErrors();
+      this.snackBar.open('Por favor complete todos los campos requeridos', 'Cerrar', {
+        duration: 3000
+      });
     }
-  }
-
-  private showDetailedFormErrors() {
-    Object.keys(this.novedadForm.controls).forEach(key => {
-      const control = this.novedadForm.get(key);
-      if (control?.invalid) {
-        console.log(`Campo inválido: ${key}`, control.errors);
-        this.snackBar.open(`Campo requerido: ${key}`, 'Cerrar', {
-          duration: 3000
-        });
-      }
-    });
   }
 
   private resetForm() {
@@ -618,21 +652,21 @@ export class NovedadesComponent implements OnInit, OnDestroy {
     }
   }
 
-  async onFotoDevolucionSelected(event: any, index: number) {
-    const file = event.target.files[0];
-    if (file) {
-      try {
-        const optimizedImage = await this.optimizeImage(file);
-        const producto = this.productos.at(index);
-        producto.patchValue({
-          foto_devolucion: optimizedImage
-        });
-      } catch (error) {
-        console.error('Error al procesar la imagen de devolución:', error);
-        this.snackBar.open('Error al procesar la imagen', 'Cerrar', {
-          duration: 3000
-        });
-      }
+  async onFotoDevolucionSelected(event: Event, index: number) {
+    const files = (event.target as HTMLInputElement).files;
+    if (!files) return;
+
+    try {
+      const producto = this.productos.at(index);
+      const currentFiles = producto.get('foto_devolucion')?.value || [];
+      const updatedFiles = await this.handleImageUpload(files, currentFiles);
+      
+      producto.patchValue({
+        foto_devolucion: updatedFiles
+      });
+    } catch (error) {
+      console.error('Error al procesar imágenes de devolución:', error);
+      this.snackBar.open('Error al procesar las imágenes', 'Cerrar', { duration: 3000 });
     }
   }
 
@@ -645,33 +679,16 @@ export class NovedadesComponent implements OnInit, OnDestroy {
     }
   }
 
-
-
   onProductFileSelected(event: Event, index: number) {
     this.handleFileUpload(event, 'product', index);
   }
 
-
-  
-
-  removeFile(controlName: FileType, index: number, fileIndex?: number) {
-    let control: AbstractControl | null;
-
-    if (controlName === 'remision_proveedor_urls' || controlName === 'foto_estado_urls') {
-      control = this.novedadForm.get(controlName);
-      if (control) {
-        const files = [...control.value];
-        files.splice(index, 1);
-        control.setValue(files);
-      }
-    } else {
-      const producto = this.productos.at(index);
-      control = producto.get(controlName === 'product' ? 'foto_remision' : 'foto_devolucion');
-      if (control && fileIndex !== undefined) {
-        const files = [...control.value];
-        files.splice(fileIndex, 1);
-        control.setValue(files);
-      }
+  removeFile(controlName: string, index: number) {
+    const control = this.novedadForm.get(controlName);
+    if (control) {
+      const files = [...control.value];
+      files.splice(index, 1);
+      control.setValue(files);
     }
   }
 
@@ -701,34 +718,165 @@ export class NovedadesComponent implements OnInit, OnDestroy {
     if (!control) return;
     currentFiles = control.value || [];
 
-    if (currentFiles.length + files.length > this.maxFiles) {
-      this.snackBar.open(`Máximo ${this.maxFiles} archivos permitidos`, 'Cerrar', {
+    // Verificar límite de 3 archivos
+    if (currentFiles.length + files.length > 3) {
+      this.snackBar.open('Máximo 3 archivos permitidos', 'Cerrar', {
         duration: 3000
       });
       return;
     }
 
-    const newFiles: FileItem[] = Array.from(files).map(file => ({
-      name: file.name,
-      file: file
-    }));
+    // Procesar cada archivo
+    Array.from(files).forEach(async (file) => {
+      try {
+        const optimizedImage = await this.optimizeImage(file);
+        const newFile: FileItem = {
+          name: file.name,
+          file: file,
+          url: optimizedImage
+        };
 
-    if (type === 'general' && controlName) {
-      this.novedadForm.patchValue({
-        [controlName]: [...currentFiles, ...newFiles]
-      });
-    } else if (index !== undefined) {
-      const fieldName = type === 'product' ? 'foto_remision' : 'foto_devolucion';
-      this.productos.at(index).patchValue({
-        [fieldName]: [...currentFiles, ...newFiles]
-      });
-    }
+        currentFiles = [...(control?.value || []), newFile];
+
+        if (type === 'general' && controlName) {
+          // Actualizar URLs principales
+          if (controlName === 'remision_proveedor_urls') {
+            this.remisionProveedorUrl = optimizedImage;
+          } else if (controlName === 'foto_estado_urls') {
+            this.fotoEstadoUrl = optimizedImage;
+          }
+          
+          this.novedadForm.patchValue({
+            [controlName]: currentFiles
+          });
+        } else if (index !== undefined) {
+          const fieldName = type === 'product' ? 'foto_remision' : 'foto_devolucion';
+          this.productos.at(index).patchValue({
+            [fieldName]: currentFiles.slice(0, 3) // Asegurar máximo 3 archivos
+          });
+        }
+      } catch (error) {
+        console.error('Error al procesar imagen:', error);
+        this.snackBar.open('Error al procesar la imagen', 'Cerrar', {
+          duration: 3000
+        });
+      }
+    });
   }
 
-  removeProductFile(index: number, fileIndex: number, field: 'foto_remision' | 'foto_devolucion') {
-    const producto = this.productos.at(index);
+  removeProductFile(productoIndex: number, fileIndex: number, field: 'foto_remision' | 'foto_devolucion') {
+    const producto = this.productos.at(productoIndex);
     const files = [...producto.get(field)?.value || []];
     files.splice(fileIndex, 1);
     producto.patchValue({ [field]: files });
   }
-} 
+
+  // Método corregido para manejar la carga de imágenes
+  onImageUpload(event: any, tipo: string, productoIndex?: number) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        const imageData = {
+          name: file.name,
+          file: file,
+          url: e.target.result
+        };
+
+        // Si es para un producto específico
+        if (productoIndex !== undefined) {
+          const producto = this.productos.at(productoIndex);
+          
+          if (tipo === 'remision') {
+            let currentImages = JSON.parse(producto.get('foto_remision_urls')?.value || '[]');
+            if (currentImages.length >= this.maxFiles) {
+              this.snackBar.open(`Máximo ${this.maxFiles} imágenes permitidas`, 'Cerrar', { duration: 3000 });
+              return;
+            }
+            currentImages.push(imageData);
+            producto.patchValue({
+              foto_remision_urls: JSON.stringify(currentImages)
+            });
+          } else if (tipo === 'devolucion') {
+            let currentImages = JSON.parse(producto.get('foto_devolucion_urls')?.value || '[]');
+            if (currentImages.length >= this.maxFiles) {
+              this.snackBar.open(`Máximo ${this.maxFiles} imágenes permitidas`, 'Cerrar', { duration: 3000 });
+              return;
+            }
+            currentImages.push(imageData);
+            producto.patchValue({
+              foto_devolucion_urls: JSON.stringify(currentImages)
+            });
+          }
+        } else {
+          // Para imágenes de la novedad general
+          if (tipo === 'remision_proveedor') {
+            let currentImages = JSON.parse(this.novedadForm.get('remision_proveedor_urls')?.value || '[]');
+            if (currentImages.length >= this.maxFiles) {
+              this.snackBar.open(`Máximo ${this.maxFiles} imágenes permitidas`, 'Cerrar', { duration: 3000 });
+              return;
+            }
+            currentImages.push(imageData);
+            this.novedadForm.patchValue({
+              remision_proveedor_urls: JSON.stringify(currentImages)
+            });
+          } else if (tipo === 'estado') {
+            let currentImages = JSON.parse(this.novedadForm.get('foto_estado_urls')?.value || '[]');
+            if (currentImages.length >= this.maxFiles) {
+              this.snackBar.open(`Máximo ${this.maxFiles} imágenes permitidas`, 'Cerrar', { duration: 3000 });
+              return;
+            }
+            currentImages.push(imageData);
+            this.novedadForm.patchValue({
+              foto_estado_urls: JSON.stringify(currentImages)
+            });
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  // Método para enviar la novedad al backend
+  async guardarNovedad() {
+    // Antes de enviar, convertir todo el objeto a JSON
+    const novedadToSend = {
+      ...this.novedadForm.value,
+      productos: this.productos.controls.map(producto => ({
+        ...producto.value,
+        foto_remision_urls: JSON.stringify(producto.get('foto_remision')?.value || []),
+        foto_devolucion_urls: JSON.stringify(producto.get('foto_devolucion')?.value || [])
+      })),
+      remision_proveedor_urls: JSON.stringify(this.novedadForm.get('remision_proveedor_urls')?.value || []),
+      foto_estado_urls: JSON.stringify(this.novedadForm.get('foto_estado_urls')?.value || [])
+    };
+
+    try {
+      const response = await this.novedadesService.create(novedadToSend).toPromise();
+      // ... resto del código
+    } catch (error) {
+      console.error('Error al guardar la novedad:', error);
+    }
+  }
+
+  async generarPreview() {
+    try {
+      const response = await this.novedadesService.generatePreviewPDF(this.novedadForm.value).toPromise();
+      
+      if (!response) {
+        throw new Error('No se recibió respuesta del servidor');
+      }
+
+      const blob = new Blob([response as BlobPart], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      this.pdfUrl = url;
+    } catch (error) {
+      console.error('Error generando preview:', error);
+      this.snackBar.open('Error al generar la vista previa del PDF', 'Cerrar', {
+        duration: 3000,
+        horizontalPosition: 'center',
+        verticalPosition: 'bottom'
+      });
+    }
+  }
+}
