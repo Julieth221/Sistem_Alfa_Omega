@@ -10,7 +10,7 @@ export class MailService {
     const {
       to,
       subject,
-      numeroRemision,
+      numero_factura,
       fecha,
       productos,
       diligenciado_por,
@@ -22,7 +22,7 @@ export class MailService {
       subject,
       template: 'novedad',
       context: {
-        numeroRemision,
+        numero_factura,
         fecha,
         productos,
         diligenciado_por,
@@ -30,7 +30,7 @@ export class MailService {
       },
       attachments: productos.map(p => ({
         filename: `remision_${p.referencia}.jpg`,
-        path: p.foto_remision
+        path: p.foto_remision_urls
       }))
     });
   }

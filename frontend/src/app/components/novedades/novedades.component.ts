@@ -568,7 +568,7 @@ export class NovedadesComponent implements OnInit, OnDestroy{
         // Preparar los datos del formulario
         const formData = {
           ...this.novedadForm.value,
-          remision_factura: this.numeroRemision,
+          numeroRemision: this.numeroRemision,
           usuario_id: this.currentUser?.id, // Asegúrate de tener el usuario actual
           fecha: new Date(this.novedadForm.get('fecha')?.value).toISOString()
         };

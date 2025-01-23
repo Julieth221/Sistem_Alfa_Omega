@@ -68,11 +68,10 @@ export class NovedadesService {
       try {
         const doc = new PDFDocument({
           size: 'A4',
-          margin: 50,
-          bufferPages: true
+          margin: 50
         });
 
-        const fileName = `novedad_${novedad.numero_remision}_${Date.now()}.pdf`;
+        const fileName = `novedad_${novedad.remision_factura}_${Date.now()}.pdf`;
         const filePath = path.join(process.cwd(), 'uploads', fileName);
         const writeStream = fs.createWriteStream(filePath);
 
@@ -262,11 +261,17 @@ export class NovedadesService {
                .text(`Imágenes de Remisión - Ref: ${producto.referencia}`, { underline: true });
             
             for (const imgData of producto.foto_remision_urls) {
-              doc.image(imgData.url, {
-                fit: [250, 250],
-                align: 'center'
-              });
-              doc.moveDown();
+              if (imgData.url) {
+                const imgBuffer = Buffer.from(
+                  imgData.url.split(';base64,').pop() || '', 
+                  'base64'
+                );
+                doc.image(imgBuffer, {
+                  fit: [250, 250],
+                  align: 'center'
+                });
+                doc.moveDown();
+              }
             }
           }
 
@@ -277,11 +282,17 @@ export class NovedadesService {
                .text(`Imágenes de Devolución - Ref: ${producto.referencia}`, { underline: true });
             
             for (const imgData of producto.foto_devolucion_urls) {
-              doc.image(imgData.url, {
-                fit: [250, 250],
-                align: 'center'
-              });
-              doc.moveDown();
+              if (imgData.url) {
+                const imgBuffer = Buffer.from(
+                  imgData.url.split(';base64,').pop() || '', 
+                  'base64'
+                );
+                doc.image(imgBuffer, {
+                  fit: [250, 250],
+                  align: 'center'
+                });
+                doc.moveDown();
+              }
             }
           }
         });
@@ -368,7 +379,7 @@ export class NovedadesService {
       const novedad = new Novedad();
       
       // Asignar el nombre del usuario como trabajador
-      novedad.trabajador = `${usuario.nombre_completo}`;
+      novedad.trabajador = usuario.nombre_completo;
       
       // Asignar el resto de los campos
       novedad.remision_proveedor_urls = novedadDto.remision_proveedor_urls || [];
