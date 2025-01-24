@@ -562,18 +562,6 @@ export class NovedadesService {
         doc.on('data', chunks.push.bind(chunks));
         doc.on('end', () => resolve(Buffer.concat(chunks)));
 
-        // Configuración de imágenes
-      const IMAGE_CONFIG = {
-        producto: {
-          fit: [400, 300],
-          align: 'center'
-        },
-        general: {
-          fit: [500, 350],
-          align: 'center'
-        }
-      };
-
         // Título y encabezado
         doc.font('Helvetica-Bold')
            .fontSize(20)
@@ -635,234 +623,234 @@ export class NovedadesService {
         doc.moveDown(2);
 
         // Productos con tabla mejorada
-        for (let i = 0; i < productoDto.length; i++) {
-          const producto = productoDto[i];
+        // for (let i = 0; i < productoDto.length; i++) {
+        //   const producto = productoDto[i];
           
-          // Si no es el primer producto, agregar nueva página
-          if (i > 0) {
-            doc.addPage();
-          }
+        //   // Si no es el primer producto, agregar nueva página
+        //   if (i > 0) {
+        //     doc.addPage();
+        //   }
 
-          const productoY = doc.y;
+        //   const productoY = doc.y;
           
-          // Título del producto con línea inferior
-          doc.fillColor('#016165')
-             .fontSize(16)
-             .font('Helvetica-Bold')
-             .text(`PRODUCTO ${i + 1}`, 70, productoY);
+        //   // Título del producto con línea inferior
+        //   doc.fillColor('#016165')
+        //      .fontSize(16)
+        //      .font('Helvetica-Bold')
+        //      .text(`PRODUCTO ${i + 1}`, 70, productoY);
 
-          doc.moveTo(70, productoY + 25)
-             .lineTo(550, productoY + 25)
-             .strokeColor('#016165')
-             .stroke();
-             doc.moveDown(2);
+        //   doc.moveTo(70, productoY + 25)
+        //      .lineTo(550, productoY + 25)
+        //      .strokeColor('#016165')
+        //      .stroke();
+        //      doc.moveDown(2);
 
-          // Configuración de la tabla
-          const startY = doc.y;
-          const labelX = 70;
-          const valueX = 220;
-          const maxWidth = 300;
-          let currentY = startY;
+        //   // Configuración de la tabla
+        //   const startY = doc.y;
+        //   const labelX = 70;
+        //   const valueX = 220;
+        //   const maxWidth = 300;
+        //   let currentY = startY;
 
-          // Función helper para agregar filas
-          const addTableRow = (label: string, value: string | string[]) => {
-            doc.font('Helvetica-Bold')
-               .fontSize(11)
-               .fillColor('#333333')
-               .text(label, labelX, currentY);
+        //   // Función helper para agregar filas
+        //   const addTableRow = (label: string, value: string | string[]) => {
+        //     doc.font('Helvetica-Bold')
+        //        .fontSize(11)
+        //        .fillColor('#333333')
+        //        .text(label, labelX, currentY);
             
-            doc.font('Helvetica');
+        //     doc.font('Helvetica');
             
-            if (Array.isArray(value)) {
-              const formattedValue = value.map(v => `• ${v}`).join('\n');
-              const textHeight = doc.heightOfString(formattedValue, { width: maxWidth });
-              doc.text(formattedValue, valueX, currentY, { width: maxWidth });
-              currentY += Math.max(textHeight, 20);
-            } else {
-              const textHeight = doc.heightOfString(value, { width: maxWidth });
-              doc.text(value, valueX, currentY, { width: maxWidth });
-              currentY += Math.max(textHeight, 20);
-            }
+        //     if (Array.isArray(value)) {
+        //       const formattedValue = value.map(v => `• ${v}`).join('\n');
+        //       const textHeight = doc.heightOfString(formattedValue, { width: maxWidth });
+        //       doc.text(formattedValue, valueX, currentY, { width: maxWidth });
+        //       currentY += Math.max(textHeight, 20);
+        //     } else {
+        //       const textHeight = doc.heightOfString(value, { width: maxWidth });
+        //       doc.text(value, valueX, currentY, { width: maxWidth });
+        //       currentY += Math.max(textHeight, 20);
+        //     }
             
-            currentY += 10;
-          };
+        //     currentY += 10;
+        //   };
 
-          doc.moveDown(2);
+        //   doc.moveDown(2);
 
-          // Detalles del producto
-          addTableRow('Referencia:', producto.referencia);
+        //   // Detalles del producto
+        //   addTableRow('Referencia:', producto.referencia);
 
-          // Cantidades
-          const cantidades = [];
-          if (producto.cantidad_m2) cantidades.push(`${productoDto.cantidad_m2} m²`);
-          if (producto.cantidad_cajas) cantidades.push(`${productoDto.cantidad_cajas} cajas`);
-          if (producto.cantidad_unidades) cantidades.push(`${productoDto.cantidad_unidades} und`);
-          addTableRow('Cantidad de la novedad:', cantidades.join(', ') || 'No especificada');
+        //   // Cantidades
+        //   const cantidades = [];
+        //   if (producto.cantidad_m2) cantidades.push(`${productoDto.cantidad_m2} m²`);
+        //   if (producto.cantidad_cajas) cantidades.push(`${productoDto.cantidad_cajas} cajas`);
+        //   if (producto.cantidad_unidades) cantidades.push(`${productoDto.cantidad_unidades} und`);
+        //   addTableRow('Cantidad de la novedad:', cantidades.join(', ') || 'No especificada');
 
-          // Tipos de novedad
-          const problemas = [];
-          if (producto.roturas) problemas.push('Roturas');
-          if (producto.desportillado) problemas.push('Desportillado');
-          if (producto.golpeado) problemas.push('Golpeado');
-          if (producto.rayado) problemas.push('Rayado');
-          if (producto.incompleto) problemas.push('Incompleto');
-          if (producto.loteado) problemas.push('Loteado');
-          if (producto.otro) problemas.push('Otro');
+        //   // Tipos de novedad
+        //   const problemas = [];
+        //   if (producto.roturas) problemas.push('Roturas');
+        //   if (producto.desportillado) problemas.push('Desportillado');
+        //   if (producto.golpeado) problemas.push('Golpeado');
+        //   if (producto.rayado) problemas.push('Rayado');
+        //   if (producto.incompleto) problemas.push('Incompleto');
+        //   if (producto.loteado) problemas.push('Loteado');
+        //   if (producto.otro) problemas.push('Otro');
           
-          if (problemas.length > 0) {
-            addTableRow('Tipo de novedad:', problemas);
-          }
+        //   if (problemas.length > 0) {
+        //     addTableRow('Tipo de novedad:', problemas);
+        //   }
 
-          if (productoDto.descripcion) {
-            addTableRow('Descripción:', productoDto.descripcion);
-          }
+        //   if (productoDto.descripcion) {
+        //     addTableRow('Descripción:', productoDto.descripcion);
+        //   }
 
-          addTableRow('Acción realizada:', 
-            this.formatearAccion(productoDto.accion_realizada as AccionRealizada)
-          );
-          doc.moveDown(1);
+        //   addTableRow('Acción realizada:', 
+        //     this.formatearAccion(productoDto.accion_realizada as AccionRealizada)
+        //   );
+        //   doc.moveDown(1);
 
-          // Imágenes de remisión del producto
-          if (productoDto.foto_remision_urls?.length) {
-            doc.addPage(); // Nueva página para las imágenes
+        //   // Imágenes de remisión del producto
+        //   if (productoDto.foto_remision_urls?.length) {
+        //     doc.addPage(); // Nueva página para las imágenes
             
-            doc.font('Helvetica-Bold')
-               .fontSize(12)
-               .text(`Imágenes de Remisión - Ref: ${productoDto.referencia}`, {
-                 underline: true,
-                 align: 'center'
-               });
-            doc.moveDown(2);
+        //     doc.font('Helvetica-Bold')
+        //        .fontSize(12)
+        //        .text(`Imágenes de Remisión - Ref: ${productoDto.referencia}`, {
+        //          underline: true,
+        //          align: 'center'
+        //        });
+        //     doc.moveDown(2);
 
-            for (const [index, imgData] of productoDto.foto_remision_urls.entries()) {
-              // Calcular posición Y para cada imagen
-              const yPos = doc.y;
+        //     for (const [index, imgData] of productoDto.foto_remision_urls.entries()) {
+        //       // Calcular posición Y para cada imagen
+        //       const yPos = doc.y;
               
-              // Si la imagen no cabe en la página actual, crear nueva página
-              if (yPos > 500) {
-                doc.addPage();
-              }
+        //       // Si la imagen no cabe en la página actual, crear nueva página
+        //       if (yPos > 500) {
+        //         doc.addPage();
+        //       }
 
-              doc.image(imgData.url, {
-                fit: [400, 300],
-                align: 'center',
+        //       doc.image(imgData.url, {
+        //         fit: [400, 300],
+        //         align: 'center',
                
-              });
+        //       });
               
-              doc.moveDown(2); // Espacio entre imágenes
-            }
-          }
+        //       doc.moveDown(2); // Espacio entre imágenes
+        //     }
+        //   }
 
-          // Imágenes de devolución del producto (si aplica)
-          if (productoDto.foto_devolucion_urls?.length && 
-            productoDto.accion_realizada === 'rechazado_devuelto') {
-            doc.addPage();
+        //   // Imágenes de devolución del producto (si aplica)
+        //   if (productoDto.foto_devolucion_urls?.length && 
+        //     productoDto.accion_realizada === 'rechazado_devuelto') {
+        //     doc.addPage();
             
-            doc.font('Helvetica-Bold')
-               .fontSize(12)
-               .text(`Imágenes de Devolución - Ref: ${productoDto.referencia}`, {
-                 underline: true,
-                 align: 'center'
-               });
-            doc.moveDown(2);
+        //     doc.font('Helvetica-Bold')
+        //        .fontSize(12)
+        //        .text(`Imágenes de Devolución - Ref: ${productoDto.referencia}`, {
+        //          underline: true,
+        //          align: 'center'
+        //        });
+        //     doc.moveDown(2);
 
-            for (const [index, imgData] of productoDto.foto_devolucion_urls.entries()) {
-              const yPos = doc.y;
+        //     for (const [index, imgData] of productoDto.foto_devolucion_urls.entries()) {
+        //       const yPos = doc.y;
               
-              if (yPos > 500) {
-                doc.addPage();
-              }
+        //       if (yPos > 500) {
+        //         doc.addPage();
+        //       }
 
-              doc.image(imgData.url, {
-                fit: [400, 300],
-                align: 'center'
-              });
+        //       doc.image(imgData.url, {
+        //         fit: [400, 300],
+        //         align: 'center'
+        //       });
               
-              doc.moveDown(2);
-            }
-          }
-        }
+        //       doc.moveDown(2);
+        //     }
+        //   }
+        // }
 
-        // Imágenes generales al final
-        if (novedadDto.remision_proveedor_urls?.length || novedadDto.foto_estado_urls?.length) {
-          doc.addPage();
+        // // Imágenes generales al final
+        // if (novedadDto.remision_proveedor_urls?.length || novedadDto.foto_estado_urls?.length) {
+        //   doc.addPage();
           
-          // Imágenes de remisión del proveedor
-          if (novedadDto.remision_proveedor_urls?.length) {
-            doc.font('Helvetica-Bold')
-               .fontSize(14)
-               .text('Imágenes de Remisión del Proveedor', {
-                 underline: true,
-                 align: 'center'
-               });
-            doc.moveDown(2);
+        //   // Imágenes de remisión del proveedor
+        //   if (novedadDto.remision_proveedor_urls?.length) {
+        //     doc.font('Helvetica-Bold')
+        //        .fontSize(14)
+        //        .text('Imágenes de Remisión del Proveedor', {
+        //          underline: true,
+        //          align: 'center'
+        //        });
+        //     doc.moveDown(2);
 
-            for (const imgData of novedadDto.remision_proveedor_urls) {
-              const yPos = doc.y;
-              if (yPos > 500) {
-                doc.addPage();
-              }
+        //     for (const imgData of novedadDto.remision_proveedor_urls) {
+        //       const yPos = doc.y;
+        //       if (yPos > 500) {
+        //         doc.addPage();
+        //       }
 
-              doc.image(imgData.url, {
-                fit: [500, 350],
-                align: 'center',
-              });
+        //       doc.image(imgData.url, {
+        //         fit: [500, 350],
+        //         align: 'center',
+        //       });
               
-              doc.moveDown(3);
-            }
-          }
+        //       doc.moveDown(3);
+        //     }
+        //   }
 
-          // Imágenes del estado
-          if (novedadDto.foto_estado_urls?.length) {
-            if (doc.y > 400) 
-              doc.addPage();
+        //   // Imágenes del estado
+        //   if (novedadDto.foto_estado_urls?.length) {
+        //     if (doc.y > 400) 
+        //       doc.addPage();
             
-            doc.font('Helvetica-Bold')
-               .fontSize(14)
-               .text('Imágenes del Estado', {
-                 underline: true,
-                 align: 'center'
-               });
-            doc.moveDown(2);
+        //     doc.font('Helvetica-Bold')
+        //        .fontSize(14)
+        //        .text('Imágenes del Estado', {
+        //          underline: true,
+        //          align: 'center'
+        //        });
+        //     doc.moveDown(2);
 
-            for (const imgData of novedadDto.foto_estado_urls) {
-              const yPos = doc.y;
+        //     for (const imgData of novedadDto.foto_estado_urls) {
+        //       const yPos = doc.y;
               
-              if (yPos > 500) {
-                doc.addPage();
-              }
+        //       if (yPos > 500) {
+        //         doc.addPage();
+        //       }
 
-              doc.image(imgData.url, {
-                fit: [500, 350],
-                align: 'center',
-              });
+        //       doc.image(imgData.url, {
+        //         fit: [500, 350],
+        //         align: 'center',
+        //       });
               
-              doc.moveDown(3);
-            }
-          }
-        }
+        //       doc.moveDown(3);
+        //     }
+        //   }
+        // }
 
-        // Numeración de páginas
-        let pages = doc.bufferedPageRange();
-        for (let i = 0; i < pages.count; i++) {
-          doc.switchToPage(i);
+        // // Numeración de páginas
+        // let pages = doc.bufferedPageRange();
+        // for (let i = 0; i < pages.count; i++) {
+        //   doc.switchToPage(i);
           
-          const footerY = 740;
+        //   const footerY = 740;
           
-          doc.moveTo(50, footerY - 10)
-             .lineTo(550, footerY - 10)
-             .strokeColor('#016165')
-             .stroke();
+        //   doc.moveTo(50, footerY - 10)
+        //      .lineTo(550, footerY - 10)
+        //      .strokeColor('#016165')
+        //      .stroke();
 
-          doc.fontSize(10)
+        //   doc.fontSize(10)
              
-             .fillColor('#666666')
-             .text(
-               `Alfa y Omega Enchapes y Acabados - Página ${i + 1} de ${pages.count}`, 50, footerY,
-               {align: 'center',
-                }
-             );
-        }
+        //      .fillColor('#666666')
+        //      .text(
+        //        `Alfa y Omega Enchapes y Acabados - Página ${i + 1} de ${pages.count}`, 50, footerY,
+        //        {align: 'center',
+        //         }
+        //      );
+        // }
 
         doc.end();
       } catch (error) {
