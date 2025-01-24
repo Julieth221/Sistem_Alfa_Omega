@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, UseGuards, Request, HttpException, HttpStatus, InternalServerErrorException, Header, Res } from '@nestjs/common';
 import { NovedadesService } from '../services/novedades.service';
-import { INovedadDto } from '../dto/producto-novedad.interface';
+import { INovedadDto, IProductoNovedadDto } from '../dto/producto-novedad.interface';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Request as ExpressRequest, Response } from 'express';
 
@@ -49,9 +49,9 @@ export class NovedadesController {
   @Post('preview')
   @UseGuards(JwtAuthGuard)
   @Header('Content-Type', 'application/pdf')
-  async generatePreview(@Body() novedadDto: INovedadDto, @Res() res: Response): Promise<void> {
+  async generatePreview(@Body() novedadDto: INovedadDto, productoDto: IProductoNovedadDto[], @Res() res: Response): Promise<void> {
     try {
-      const pdfBuffer = await this.novedadesService.generatePreviewPdf(novedadDto);
+      const pdfBuffer = await this.novedadesService.generatePreviewPdf(novedadDto, productoDto);
       res.set({
         'Content-Type': 'application/pdf',
         'Content-Length': pdfBuffer.length,

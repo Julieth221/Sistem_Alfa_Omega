@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Novedad } from '../entities/novedad.entity';
 import { ProductoNovedad } from '../entities/producto-novedad.entity';
-import { INovedadDto } from '../dto/producto-novedad.interface';
+import { INovedadDto, IProductoNovedadDto } from '../dto/producto-novedad.interface';
 import { MailerService } from '@nestjs-modules/mailer';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -12,6 +12,7 @@ import { Usuario } from '../entities/usuario.entity';
 import { resolve } from 'path';
 import { format } from 'date-fns';
 import { NotFoundException } from '@nestjs/common';
+import { width } from 'pdfkit/js/page';
 
 interface ImageData {
   name?: string;
@@ -63,32 +64,38 @@ export class NovedadesService {
     }
   }
 
-  private async generarPDF(novedad: Novedad, productos: ProductoNovedad[]): Promise<string> {
-    return new Promise((resolve, reject) => {
+  private async generarPDF (novedad: Novedad, productos: ProductoNovedad[]): Promise<Buffer> {
+    return new Promise(async (resolve, reject) => {
       try {
         const doc = new PDFDocument({
           size: 'A4',
-          margin: 50
+          margin: 50,
+          bufferPages: true
         });
 
-        const fileName = `novedad_${novedad.remision_factura}_${Date.now()}.pdf`;
-        const filePath = path.join(process.cwd(), 'uploads', fileName);
-        const writeStream = fs.createWriteStream(filePath);
+        const chunks: Buffer[] = [];
+        doc.on('data', chunks.push.bind(chunks));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
 
-        doc.pipe(writeStream);
+        // Configuración de imágenes
+      const IMAGE_CONFIG = {
+        producto: {
+          fit: [400, 300],
+          align: 'center'
+        },
+        general: {
+          fit: [500, 350],
+          align: 'center'
+        }
+      };
 
-        const addHeader = () => {
-          doc.font('Helvetica-Bold')
-             .fontSize(20)
-             .fillColor('#016165')
-             .text('Mercancía con Problemas en la Recepción', {
-               align: 'center'
-             });
-          doc.moveDown(1);
-        };
+        // Título y encabezado
+        doc.font('Helvetica-Bold')
+           .fontSize(20)
+           .fillColor('#016165')
+           .text('Mercancía con Problemas en la Recepción', { align: 'center' });
+        doc.moveDown();
 
-        addHeader();
-        
         // Información General con nuevo diseño
         const infoY = doc.y;
         doc.rect(50, infoY, 500, 150)
@@ -140,43 +147,15 @@ export class NovedadesService {
            .font('Helvetica')
            .text(novedad.aprobado_por || 'No especificado', col1X + 130, currentY + 125);
 
-        doc.moveDown(4);
-
-        // Procesar imágenes de remisión del proveedor
-        if (novedad.remision_proveedor_urls?.length) {
-          doc.font('Helvetica-Bold')
-             .fontSize(12)
-             .text('Imágenes de Remisión del Proveedor:', { underline: true });
-          
-          for (const imgData of novedad.remision_proveedor_urls) {
-            doc.image(imgData.url, {
-              fit: [250, 250],
-              align: 'center'
-            });
-            doc.moveDown();
-          }
-        }
-
-        // Procesar imágenes de estado
-        if (novedad.foto_estado_urls?.length) {
-          doc.font('Helvetica-Bold')
-             .fontSize(12)
-             .text('Imágenes del Estado:', { underline: true });
-          
-          for (const imgData of novedad.foto_estado_urls) {
-            doc.image(imgData.url, {
-              fit: [250, 250],
-              align: 'center'
-            });
-            doc.moveDown();
-          }
-        }
+        doc.moveDown(2);
 
         // Productos con tabla mejorada
-        productos.forEach((producto, index) => {
-          if (index > 0) {
+        for (let i = 0; i < productos.length; i++) {
+          const producto = productos[i];
+          
+          // Si no es el primer producto, agregar nueva página
+          if (i > 0) {
             doc.addPage();
-            addHeader();
           }
 
           const productoY = doc.y;
@@ -185,15 +164,16 @@ export class NovedadesService {
           doc.fillColor('#016165')
              .fontSize(16)
              .font('Helvetica-Bold')
-             .text(`PRODUCTO ${index + 1}`, 70, productoY);
+             .text(`PRODUCTO ${i + 1}`, 70, productoY);
 
           doc.moveTo(70, productoY + 25)
              .lineTo(550, productoY + 25)
              .strokeColor('#016165')
              .stroke();
+             doc.moveDown(2);
 
           // Configuración de la tabla
-          const startY = productoY + 40;
+          const startY = doc.y;
           const labelX = 70;
           const valueX = 220;
           const maxWidth = 300;
@@ -221,6 +201,8 @@ export class NovedadesService {
             
             currentY += 10;
           };
+
+          doc.moveDown(2);
 
           // Detalles del producto
           addTableRow('Referencia:', producto.referencia);
@@ -253,44 +235,134 @@ export class NovedadesService {
           addTableRow('Acción realizada:', 
             this.formatearAccion(producto.accion_realizada as AccionRealizada)
           );
+          doc.moveDown(1);
 
-          // Imágenes de remisión
+          // Imágenes de remisión del producto
           if (producto.foto_remision_urls?.length) {
+            doc.addPage(); // Nueva página para las imágenes
+            
             doc.font('Helvetica-Bold')
                .fontSize(12)
-               .text(`Imágenes de Remisión - Ref: ${producto.referencia}`, { underline: true });
-            
-            for (const imgData of producto.foto_remision_urls) {
-                doc.image(imgData.url, {
-                  fit: [250, 250],
-                  align: 'center'
-                });
-                doc.moveDown(); 
+               .text(`Imágenes de Remisión - Ref: ${producto.referencia}`, {
+                 underline: true,
+                 align: 'center'
+               });
+            doc.moveDown(2);
+
+            for (const [index, imgData] of producto.foto_remision_urls.entries()) {
+              // Calcular posición Y para cada imagen
+              const yPos = doc.y;
+              
+              // Si la imagen no cabe en la página actual, crear nueva página
+              if (yPos > 500) {
+                doc.addPage();
+              }
+
+              doc.image(imgData.url, {
+                fit: [400, 300],
+                align: 'center',
+               
+              });
+              
+              doc.moveDown(2); // Espacio entre imágenes
             }
           }
 
-          // Imágenes de devolución
-          if (producto.foto_devolucion_urls?.length) {
+          // Imágenes de devolución del producto (si aplica)
+          if (producto.foto_devolucion_urls?.length && 
+              producto.accion_realizada === 'rechazado_devuelto') {
+            doc.addPage();
+            
             doc.font('Helvetica-Bold')
                .fontSize(12)
-               .text(`Imágenes de Devolución - Ref: ${producto.referencia}`, { underline: true });
-            
-            for (const imgData of producto.foto_devolucion_urls) {
-                doc.image(imgData.url, {
-                  fit: [250, 250],
-                  align: 'center'
-                });
-                doc.moveDown();
+               .text(`Imágenes de Devolución - Ref: ${producto.referencia}`, {
+                 underline: true,
+                 align: 'center'
+               });
+            doc.moveDown(2);
+
+            for (const [index, imgData] of producto.foto_devolucion_urls.entries()) {
+              const yPos = doc.y;
+              
+              if (yPos > 500) {
+                doc.addPage();
+              }
+
+              doc.image(imgData.url, {
+                fit: [400, 300],
+                align: 'center'
+              });
+              
+              doc.moveDown(2);
             }
           }
-        });
+        }
 
-        // Pie de página en todas las páginas
+        // Imágenes generales al final
+        if (novedad.remision_proveedor_urls?.length || novedad.foto_estado_urls?.length) {
+          doc.addPage();
+          
+          // Imágenes de remisión del proveedor
+          if (novedad.remision_proveedor_urls?.length) {
+            doc.font('Helvetica-Bold')
+               .fontSize(14)
+               .text('Imágenes de Remisión del Proveedor', {
+                 underline: true,
+                 align: 'center'
+               });
+            doc.moveDown(2);
+
+            for (const imgData of novedad.remision_proveedor_urls) {
+              const yPos = doc.y;
+              if (yPos > 500) {
+                doc.addPage();
+              }
+
+              doc.image(imgData.url, {
+                fit: [500, 350],
+                align: 'center',
+              });
+              
+              doc.moveDown(3);
+            }
+          }
+
+          // Imágenes del estado
+          if (novedad.foto_estado_urls?.length) {
+            if (doc.y > 400) 
+              doc.addPage();
+            
+            doc.font('Helvetica-Bold')
+               .fontSize(14)
+               .text('Imágenes del Estado', {
+                 underline: true,
+                 align: 'center'
+               });
+            doc.moveDown(2);
+
+            for (const imgData of novedad.foto_estado_urls) {
+              const yPos = doc.y;
+              
+              if (yPos > 500) {
+                doc.addPage();
+              }
+
+              doc.image(imgData.url, {
+                fit: [500, 350],
+                align: 'center',
+              });
+              
+              doc.moveDown(3);
+            }
+          }
+        }
+
+        // Numeración de páginas
         let pages = doc.bufferedPageRange();
         for (let i = 0; i < pages.count; i++) {
           doc.switchToPage(i);
           
-          const footerY = 760;
+          const footerY = 740;
           
           doc.moveTo(50, footerY - 10)
              .lineTo(550, footerY - 10)
@@ -298,25 +370,21 @@ export class NovedadesService {
              .stroke();
 
           doc.fontSize(10)
+             
              .fillColor('#666666')
-             .text('Alfa y Omega Enchapes y Acabados', 50, footerY, {
-               align: 'center',
-               width: 500
-             })
-             .text(`Página ${i + 1}`, 500, footerY, {
-               align: 'right'
-             });
+             .text(
+               `Alfa y Omega Enchapes y Acabados - Página ${i + 1} de ${pages.count}`, 50, footerY,
+               {align: 'center',
+                }
+             );
         }
 
         doc.end();
-
-        writeStream.on('finish', () => resolve(filePath));
-
       } catch (error) {
         reject(error);
       }
     });
-  }
+  } 
 
   private formatearAccion(accion: AccionRealizada): string {
     const acciones = {
@@ -413,7 +481,7 @@ export class NovedadesService {
       }
 
       // Generar PDF con los productos guardados
-      const pdfPath = await this.generarPDF(savedNovedad, productosGuardados);
+      const pdfBuffer = await this.generarPDF(savedNovedad, productosGuardados);
 
       // Enviar email
       await this.mailerService.sendMail({
@@ -444,7 +512,7 @@ export class NovedadesService {
         `,
         attachments: [{
           filename: `novedad_${savedNovedad.remision_factura}.pdf`,
-          content: fs.createReadStream(pdfPath),
+          content: pdfBuffer,
           contentType: 'application/pdf'
         }]
       });
@@ -481,7 +549,7 @@ export class NovedadesService {
     }
   }
 
-  async generatePreviewPdf(novedadDto: INovedadDto): Promise<Buffer> {
+  async generatePreviewPdf(novedadDto: INovedadDto, productoDto: IProductoNovedadDto): Promise<Buffer> {
     return new Promise(async (resolve, reject) => {
       try {
         const doc = new PDFDocument({
@@ -494,60 +562,306 @@ export class NovedadesService {
         doc.on('data', chunks.push.bind(chunks));
         doc.on('end', () => resolve(Buffer.concat(chunks)));
 
-        // Header
+        // Configuración de imágenes
+      const IMAGE_CONFIG = {
+        producto: {
+          fit: [400, 300],
+          align: 'center'
+        },
+        general: {
+          fit: [500, 350],
+          align: 'center'
+        }
+      };
+
+        // Título y encabezado
         doc.font('Helvetica-Bold')
            .fontSize(20)
            .fillColor('#016165')
-           .text('Mercancía con Problemas en la Recepción', {
-             align: 'center'
-           });
-        doc.moveDown(1);
+           .text('Mercancía con Problemas en la Recepción', { align: 'center' });
+        doc.moveDown();
 
-        // Información General
-        doc.font('Helvetica-Bold')
-           .fontSize(14)
+        // Información General con nuevo diseño
+        const infoY = doc.y;
+        doc.rect(50, infoY, 500, 150)
+           .fillColor('#f8f9fa')
+           .fill()
+           .strokeColor('#016165')
+           .stroke();
+
+        doc.fontSize(16)
            .fillColor('#016165')
-           .text('Información General');
-        doc.moveDown(0.5);
+           .text('Información General', 70, infoY + 15);
 
-        // Tabla de información
-        const infoData = [
-          ['N° DE REMISIÓN:', novedadDto.remision_factura || ''],
-          ['FECHA:', new Date(novedadDto.fecha).toLocaleDateString()],
-          ['PROVEEDOR:', novedadDto.proveedor || ''],
-          ['NIT:', novedadDto.nit || ''],
-          ['DILIGENCIADO POR:', novedadDto.trabajador || ''],
-          ['APROBADO POR:', novedadDto.aprobado_por || '']
-        ];
+        doc.fontSize(12)
+           .fillColor('#333333');
 
-        let yPos = doc.y;
-        infoData.forEach(([label, value]) => {
-          doc.font('Helvetica-Bold')
-             .fontSize(11)
-             .fillColor('#333333')
-             .text(label, 70, yPos);
-          
-          doc.font('Helvetica')
-             .text(value, 220, yPos);
-          
-          yPos += 25;
-        });
+        const col1X = 70;
+        const col2X = 300;
+        let currentY = infoY + 45;
+
+        // Primera columna
+        doc.font('Helvetica-Bold')
+           .text('N° DE REMISIÓN:', col1X, currentY)
+           .font('Helvetica')
+           .text(novedadDto.remision_factura, col1X + 130, currentY);
+
+        doc.font('Helvetica-Bold')
+           .text('FECHA:', col1X, currentY + 25)
+           .font('Helvetica')
+           .text(new Date(novedadDto.fecha).toLocaleDateString(), col1X + 130, currentY + 25);
+
+        doc.font('Helvetica-Bold')
+           .text('PROVEEDOR:', col1X, currentY + 50)
+           .font('Helvetica')
+           .text(novedadDto.proveedor, col1X + 130, currentY + 50);
+
+        // Segunda columna
+        doc.font('Helvetica-Bold')
+           .text('NIT:', col1X, currentY +75)
+           .font('Helvetica')
+           .text(novedadDto.nit, col1X + 130, currentY + 75);
+
+        doc.font('Helvetica-Bold')
+           .text('DILIGENCIADO POR:', col1X, currentY + 100)
+           .font('Helvetica')
+           .text(novedadDto.trabajador, col1X + 130, currentY + 100);
+
+        doc.font('Helvetica-Bold')
+           .text('APROBADO POR:', col1X, currentY + 125)
+           .font('Helvetica')
+           .text(novedadDto.aprobado_por || 'No especificado', col1X + 130, currentY + 125);
 
         doc.moveDown(2);
 
-        // Imágenes
-        if (novedadDto.remision_proveedor_urls?.length) {
-          doc.font('Helvetica-Bold')
-             .fontSize(12)
-             .text('Imágenes de Remisión del Proveedor:', { underline: true });
-          doc.moveDown();
+        // Productos con tabla mejorada
+        for (let i = 0; i < productoDto.length; i++) {
+          const producto = productoDto[i];
+          
+          // Si no es el primer producto, agregar nueva página
+          if (i > 0) {
+            doc.addPage();
+          }
+
+          const productoY = doc.y;
+          
+          // Título del producto con línea inferior
+          doc.fillColor('#016165')
+             .fontSize(16)
+             .font('Helvetica-Bold')
+             .text(`PRODUCTO ${i + 1}`, 70, productoY);
+
+          doc.moveTo(70, productoY + 25)
+             .lineTo(550, productoY + 25)
+             .strokeColor('#016165')
+             .stroke();
+             doc.moveDown(2);
+
+          // Configuración de la tabla
+          const startY = doc.y;
+          const labelX = 70;
+          const valueX = 220;
+          const maxWidth = 300;
+          let currentY = startY;
+
+          // Función helper para agregar filas
+          const addTableRow = (label: string, value: string | string[]) => {
+            doc.font('Helvetica-Bold')
+               .fontSize(11)
+               .fillColor('#333333')
+               .text(label, labelX, currentY);
+            
+            doc.font('Helvetica');
+            
+            if (Array.isArray(value)) {
+              const formattedValue = value.map(v => `• ${v}`).join('\n');
+              const textHeight = doc.heightOfString(formattedValue, { width: maxWidth });
+              doc.text(formattedValue, valueX, currentY, { width: maxWidth });
+              currentY += Math.max(textHeight, 20);
+            } else {
+              const textHeight = doc.heightOfString(value, { width: maxWidth });
+              doc.text(value, valueX, currentY, { width: maxWidth });
+              currentY += Math.max(textHeight, 20);
+            }
+            
+            currentY += 10;
+          };
+
+          doc.moveDown(2);
+
+          // Detalles del producto
+          addTableRow('Referencia:', producto.referencia);
+
+          // Cantidades
+          const cantidades = [];
+          if (producto.cantidad_m2) cantidades.push(`${productoDto.cantidad_m2} m²`);
+          if (producto.cantidad_cajas) cantidades.push(`${productoDto.cantidad_cajas} cajas`);
+          if (producto.cantidad_unidades) cantidades.push(`${productoDto.cantidad_unidades} und`);
+          addTableRow('Cantidad de la novedad:', cantidades.join(', ') || 'No especificada');
+
+          // Tipos de novedad
+          const problemas = [];
+          if (producto.roturas) problemas.push('Roturas');
+          if (producto.desportillado) problemas.push('Desportillado');
+          if (producto.golpeado) problemas.push('Golpeado');
+          if (producto.rayado) problemas.push('Rayado');
+          if (producto.incompleto) problemas.push('Incompleto');
+          if (producto.loteado) problemas.push('Loteado');
+          if (producto.otro) problemas.push('Otro');
+          
+          if (problemas.length > 0) {
+            addTableRow('Tipo de novedad:', problemas);
+          }
+
+          if (productoDto.descripcion) {
+            addTableRow('Descripción:', productoDto.descripcion);
+          }
+
+          addTableRow('Acción realizada:', 
+            this.formatearAccion(productoDto.accion_realizada as AccionRealizada)
+          );
+          doc.moveDown(1);
+
+          // Imágenes de remisión del producto
+          if (productoDto.foto_remision_urls?.length) {
+            doc.addPage(); // Nueva página para las imágenes
+            
+            doc.font('Helvetica-Bold')
+               .fontSize(12)
+               .text(`Imágenes de Remisión - Ref: ${productoDto.referencia}`, {
+                 underline: true,
+                 align: 'center'
+               });
+            doc.moveDown(2);
+
+            for (const [index, imgData] of productoDto.foto_remision_urls.entries()) {
+              // Calcular posición Y para cada imagen
+              const yPos = doc.y;
+              
+              // Si la imagen no cabe en la página actual, crear nueva página
+              if (yPos > 500) {
+                doc.addPage();
+              }
+
+              doc.image(imgData.url, {
+                fit: [400, 300],
+                align: 'center',
+               
+              });
+              
+              doc.moveDown(2); // Espacio entre imágenes
+            }
+          }
+
+          // Imágenes de devolución del producto (si aplica)
+          if (productoDto.foto_devolucion_urls?.length && 
+            productoDto.accion_realizada === 'rechazado_devuelto') {
+            doc.addPage();
+            
+            doc.font('Helvetica-Bold')
+               .fontSize(12)
+               .text(`Imágenes de Devolución - Ref: ${productoDto.referencia}`, {
+                 underline: true,
+                 align: 'center'
+               });
+            doc.moveDown(2);
+
+            for (const [index, imgData] of productoDto.foto_devolucion_urls.entries()) {
+              const yPos = doc.y;
+              
+              if (yPos > 500) {
+                doc.addPage();
+              }
+
+              doc.image(imgData.url, {
+                fit: [400, 300],
+                align: 'center'
+              });
+              
+              doc.moveDown(2);
+            }
+          }
         }
 
-        if (novedadDto.foto_estado_urls?.length) {
-          doc.font('Helvetica-Bold')
-             .fontSize(12)
-             .text('Imágenes del Estado:', { underline: true });
-          doc.moveDown();
+        // Imágenes generales al final
+        if (novedadDto.remision_proveedor_urls?.length || novedadDto.foto_estado_urls?.length) {
+          doc.addPage();
+          
+          // Imágenes de remisión del proveedor
+          if (novedadDto.remision_proveedor_urls?.length) {
+            doc.font('Helvetica-Bold')
+               .fontSize(14)
+               .text('Imágenes de Remisión del Proveedor', {
+                 underline: true,
+                 align: 'center'
+               });
+            doc.moveDown(2);
+
+            for (const imgData of novedadDto.remision_proveedor_urls) {
+              const yPos = doc.y;
+              if (yPos > 500) {
+                doc.addPage();
+              }
+
+              doc.image(imgData.url, {
+                fit: [500, 350],
+                align: 'center',
+              });
+              
+              doc.moveDown(3);
+            }
+          }
+
+          // Imágenes del estado
+          if (novedadDto.foto_estado_urls?.length) {
+            if (doc.y > 400) 
+              doc.addPage();
+            
+            doc.font('Helvetica-Bold')
+               .fontSize(14)
+               .text('Imágenes del Estado', {
+                 underline: true,
+                 align: 'center'
+               });
+            doc.moveDown(2);
+
+            for (const imgData of novedadDto.foto_estado_urls) {
+              const yPos = doc.y;
+              
+              if (yPos > 500) {
+                doc.addPage();
+              }
+
+              doc.image(imgData.url, {
+                fit: [500, 350],
+                align: 'center',
+              });
+              
+              doc.moveDown(3);
+            }
+          }
+        }
+
+        // Numeración de páginas
+        let pages = doc.bufferedPageRange();
+        for (let i = 0; i < pages.count; i++) {
+          doc.switchToPage(i);
+          
+          const footerY = 740;
+          
+          doc.moveTo(50, footerY - 10)
+             .lineTo(550, footerY - 10)
+             .strokeColor('#016165')
+             .stroke();
+
+          doc.fontSize(10)
+             
+             .fillColor('#666666')
+             .text(
+               `Alfa y Omega Enchapes y Acabados - Página ${i + 1} de ${pages.count}`, 50, footerY,
+               {align: 'center',
+                }
+             );
         }
 
         doc.end();
@@ -555,7 +869,8 @@ export class NovedadesService {
         reject(error);
       }
     });
-  }
+  } 
+  
 }
 
 
