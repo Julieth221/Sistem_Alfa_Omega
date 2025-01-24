@@ -1,7 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Novedad } from './novedad.entity';
 
-@Entity({ schema: 'SistemNovedad', name: 'productos_novedad' })
+
+@Entity('productos_novedad', { schema: 'SistemNovedad' })
 export class ProductoNovedad {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -42,17 +43,26 @@ export class ProductoNovedad {
   @Column({ default: false })
   otro!: boolean;
 
-  @Column({ nullable: true })
-  descripcion!: string;
+  @Column({ type: 'text', nullable: true })
+  descripcion?: string;
 
   @Column({ nullable: true })
   correo!: string;
 
-  @Column({ nullable: true })
+  @Column({ length: 50 })
   accion_realizada!: string;
 
-  @Column({ name: 'foto_remision_url', nullable: true })
-  foto_remision_url!: string;
+  @Column('jsonb', { nullable: false })
+  foto_remision_urls!: Array<{
+    name: string;
+    url: string;
+  }>;
+
+  @Column('jsonb', { nullable: true })
+  foto_devolucion_urls!: Array<{
+    name: string;
+    url: string;
+  }>;
 
   @ManyToOne(() => Novedad, novedad => novedad.productos)
   @JoinColumn({ name: 'novedad_id' })

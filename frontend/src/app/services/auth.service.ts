@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
@@ -15,17 +15,28 @@ export interface LoginResponse {
 })
 export class AuthService {
   private readonly API_URL = `${environment.apiUrl}/auth`;
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  private currentUserSubject = new BehaviorSubject<any>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(
     private http: HttpClient,
     private router: Router
   ) {
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      this.currentUserSubject.next(JSON.parse(savedUser));
+    // Verificar token al iniciar
+    this.checkToken();
+  }
+
+  private checkToken() {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('currentUser');
+    if (token && user) {
+      this.currentUserSubject.next(JSON.parse(user));
     }
+  }
+
+  getAuthHeaders(): HttpHeaders {
+    const token = this.getToken();
+    return new HttpHeaders().set('Authorization', `Bearer ${token}`);
   }
 
   login(email: string, password: string): Observable<LoginResponse> {
@@ -62,7 +73,7 @@ export class AuthService {
     return !!this.getToken();
   }
 
-  getCurrentUser(): User | null {
-    return this.currentUserSubject.value;
+  getCurrentUser(): Observable<any> {
+    return this.currentUser$;
   }
 } 

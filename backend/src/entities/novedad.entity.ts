@@ -2,7 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { ProductoNovedad } from './producto-novedad.entity';
 import { Usuario } from './usuario.entity';
 
-@Entity({ schema: 'SistemNovedad', name: 'novedades' })
+@Entity('novedades', { schema: 'SistemNovedad' })
 export class Novedad {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -10,22 +10,49 @@ export class Novedad {
   @Column({ unique: true })
   numero_remision!: string;
 
+  @Column({ length: 20 })
+  remision_factura!: string;
+
   @Column({ type: 'date' })
   fecha!: Date;
 
-  @Column({ nullable: true })
-  trabajador!: string;
+  @Column({ length: 20 })
+  nit!: string;
 
-  @Column({ name: 'usuario_id', nullable: true })
+  @Column({ length: 100 })
+  trabajador!: string;
+ 
+  @Column({ type: 'text' })
+  observaciones!: string;
+
+  @Column({ length: 100 })
+  aprobado_por!: string;
+
+  @Column('jsonb', { nullable: false })
+  remision_proveedor_urls!: Array<{
+    name: string;
+    url: string;
+  }>;
+
+  @Column('jsonb', { nullable: false })
+  foto_estado_urls!: Array<{
+    name: string;
+    url: string;
+  }>;
+
+  @Column({ length: 100 })
+  proveedor!: string;
+
+  @Column({ nullable: true })
   usuario_id!: number;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn()
   created_at!: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn()
   updated_at!: Date;
 
-  @ManyToOne(() => Usuario, { nullable: true })
+  @ManyToOne(() => Usuario)
   @JoinColumn({ name: 'usuario_id' })
   usuario!: Usuario;
 

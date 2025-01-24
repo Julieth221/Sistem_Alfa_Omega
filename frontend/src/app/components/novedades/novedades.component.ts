@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, FormControl, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -14,6 +14,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { PreviewPdfComponent } from './preview-pdf.component';
 import { NovedadesService } from '../../services/novedades.service';
 import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+import { Subject, takeUntil, filter, firstValueFrom } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { NgxExtendedPdfViewerModule } from 'ngx-extended-pdf-viewer';
+
 
 interface ApiResponse {
   message: string;
@@ -35,9 +40,18 @@ interface ProductoNovedad {
   otro: boolean;
   descripcion: string;
   accion_realizada: string;
-  foto_remision?: string;
+  foto_remision_urls?: string;
   correo?: string;
 }
+
+interface FileItem {
+  name: string;
+  file: File;
+  url?: string;
+}
+
+type FileControlName = 'remision_proveedor_urls' | 'foto_estado_urls';
+type FileType = 'product' | 'devolution' | 'general' | FileControlName;
 
 @Component({
   selector: 'app-novedades',
@@ -54,7 +68,9 @@ interface ProductoNovedad {
     MatDialogModule,
     MatSnackBarModule,
     MatSelectModule,
-    MatIconModule
+    MatIconModule,
+    MatIconModule,
+    NgxExtendedPdfViewerModule
   ],
   template: `
     <div class="novedades-container">
@@ -68,11 +84,83 @@ interface ProductoNovedad {
           </mat-form-field>
 
           <mat-form-field>
+            <mat-label>N° Remisión Factura</mat-label>
+            <input matInput formControlName="remision_factura">
+          </mat-form-field>
+
+          <mat-form-field>
             <mat-label>Fecha</mat-label>
             <input matInput [matDatepicker]="picker" formControlName="fecha">
             <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
             <mat-datepicker #picker></mat-datepicker>
           </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>NIT</mat-label>
+            <input matInput formControlName="nit">
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Proveedor</mat-label>
+            <input matInput formControlName="proveedor">
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Observaciones</mat-label>
+            <textarea matInput formControlName="observaciones" rows="3"></textarea>
+          </mat-form-field>
+
+          <div class="form-section">
+            <div class="file-upload-container">
+              <label>Remisión del Proveedor (Máx. 3 imágenes)</label>
+              <div class="file-input-wrapper">
+                <button type="button" mat-raised-button color="primary" (click)="fileInputRemision.click()">
+                  <mat-icon>upload_file</mat-icon>
+                  Seleccionar archivos
+                </button>
+                <input #fileInputRemision type="file" 
+                       multiple 
+                       accept="image/*" 
+                       (change)="onFileSelected($event, 'remision_proveedor_urls')"
+                       style="display: none">
+              </div>
+              <div class="file-list" *ngIf="novedadForm.get('remision_proveedor_urls')?.value?.length">
+                <div *ngFor="let file of novedadForm.get('remision_proveedor_urls')?.value; let i = index" 
+                     class="file-item">
+                  <mat-icon>insert_drive_file</mat-icon>
+                  <span>{{ file.name }}</span>
+                  <button type="button" mat-icon-button (click)="removeFile('remision_proveedor_urls', i)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="file-upload-container">
+              <label>Fotos del Estado (Máx. 3 imágenes)</label>
+              <div class="file-input-wrapper">
+                <button type="button" mat-raised-button color="primary" (click)="fileInputEstado.click()">
+                  <mat-icon>upload_file</mat-icon>
+                  Seleccionar archivos
+                </button>
+                <input #fileInputEstado type="file" 
+                       multiple 
+                       accept="image/*" 
+                       (change)="onFileSelected($event, 'foto_estado_urls')"
+                       style="display: none">
+              </div>
+              <div class="file-list" *ngIf="novedadForm.get('foto_estado_urls')?.value?.length">
+                <div *ngFor="let file of novedadForm.get('foto_estado_urls')?.value; let i = index" 
+                     class="file-item">
+                  <mat-icon>insert_drive_file</mat-icon>
+                  <span>{{ file.name }}</span>
+                  <button type="button" mat-icon-button (click)="removeFile('foto_estado_urls', i)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div formArrayName="productos">
@@ -117,8 +205,39 @@ interface ProductoNovedad {
               </div>
 
               <div class="file-upload">
-                <label>Anexar Remisión</label>
-                <input type="file" (change)="onFileSelected($event, i)" accept="image/*">
+                <label>Anexar foto del producto</label>
+                <input type="file" 
+                       multiple
+                       accept="image/*" 
+                       (change)="onProductImageSelected($event, i, 'remision')">
+                <div class="file-list" *ngIf="producto.get('foto_remision_urls')?.value?.length">
+                  <div *ngFor="let file of producto.get('foto_remision_urls')?.value; let fileIndex = index" 
+                       class="file-item">
+                    <mat-icon>insert_drive_file</mat-icon>
+                    <span>{{ file.name }}</span>
+                    <button type="button" mat-icon-button (click)="removeProductFile(i, fileIndex, 'foto_remision_urls')">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="file-upload" *ngIf="producto.get('accion_realizada')?.value === 'rechazado_devuelto'">
+                <label>Foto de Devolución</label>
+                <input type="file" 
+                       multiple
+                       accept="image/*" 
+                       (change)="onProductImageSelected($event, i, 'devolucion')">
+                <div class="file-list" *ngIf="producto.get('foto_devolucion_urls')?.value?.length">
+                  <div *ngFor="let file of producto.get('foto_devolucion_urls')?.value; let fileIndex = index" 
+                       class="file-item">
+                    <mat-icon>insert_drive_file</mat-icon>
+                    <span>{{ file.name }}</span>
+                    <button type="button" mat-icon-button (click)="removeProductFile(i, fileIndex, 'foto_devolucion_urls')">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -132,7 +251,12 @@ interface ProductoNovedad {
           <div class="datos-contacto">
             <mat-form-field>
               <mat-label>Diligenciado por</mat-label>
-              <input matInput formControlName="diligenciado_por">
+              <input matInput formControlName="diligenciado_por" readonly>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Aprobado por</mat-label>
+              <input matInput formControlName="aprobado_por">
             </mat-form-field>
 
             <mat-form-field>
@@ -141,11 +265,10 @@ interface ProductoNovedad {
             </mat-form-field>
           </div>
 
-          <div class="firma-digital">
+          <div class="firma-digital" *ngIf="firmaDigitalUrl">
             <label>Firma Digital</label>
-            <div class="firma-placeholder" [class.has-image]="firmaDigitalUrl">
-              <img *ngIf="firmaDigitalUrl" src="assets/images/FirmaDigital.png" alt="Firma digital">
-              <span *ngIf="!firmaDigitalUrl">Haga clic para agregar firma</span>
+            <div class="firma-preview">
+              <img [src]="firmaDigitalUrl" alt="Firma digital">
             </div>
           </div>
         </div>
@@ -159,31 +282,125 @@ interface ProductoNovedad {
     </div>
   `,
 })
-export class NovedadesComponent implements OnInit {
+export class NovedadesComponent implements OnInit, OnDestroy{
+  private destroy$ = new Subject<void>();
+  private readonly maxFiles = 3;
   novedadForm!: FormGroup;
   numeroRemision: string = '';
+  currentUser: any;
   firmaDigitalUrl: string = 'assets/images/firma-digital.png';
+  remisionProveedorUrl: string | null = null;
+  fotoEstadoUrl: string | null = null;
+  pdfUrl: string = '';
 
   constructor(
     private fb: FormBuilder,
     private dialog: MatDialog,
     private novedadesService: NovedadesService,
     private snackBar: MatSnackBar,
-    private router: Router
+    private router: Router,
+    private authService: AuthService
   ) {}
 
   ngOnInit() {
-    this.novedadForm = this.fb.group({
-      fecha: ['', Validators.required],
-      diligenciado_por: ['', Validators.required],
-      correo: ['', [Validators.required, Validators.email]],
-      productos: this.fb.array([])
+    // Primero cargar el usuario
+    this.authService.currentUser$.subscribe({
+      next: (user) => {
+        console.log('Usuario cargado:', user);
+        this.currentUser = user;
+        if (user && this.novedadForm) {
+          const nombreCompleto = `${user.nombre} ${user.apellido}`;
+          console.log('Actualizando diligenciado_por con:', nombreCompleto);
+          this.novedadForm.patchValue({
+            diligenciado_por: nombreCompleto
+          });
+        }
+      },
+      error: (error) => console.error('Error al cargar usuario:', error)
     });
 
-    this.cargarUltimoNumeroRemision();
+    // Luego inicializar el formulario
+    this.initForm();
   }
 
-  get productos() {
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private initForm() {
+    this.novedadForm = this.fb.group({
+      remision_factura: ['', Validators.required],
+      fecha: ['', Validators.required],
+      nit: ['', Validators.required],
+      proveedor: ['', Validators.required],
+      observaciones: ['', Validators.required],
+      remision_proveedor: [null, Validators.required],
+      foto_estado: [null, Validators.required],
+      diligenciado_por: [{ 
+        value: this.currentUser ? `${this.currentUser.nombre} ${this.currentUser.apellido}` : '', 
+        disabled: true 
+      }],
+      aprobado_por: ['', Validators.required],
+      correo: ['', [Validators.required, Validators.email]],
+      remision_proveedor_urls: [[], [Validators.required, this.validateImageCount.bind(this)]],
+      foto_estado_urls: [[], [Validators.required, this.validateImageCount.bind(this)]],
+      productos: this.fb.array([])
+    });
+    
+
+    this.novedadForm.get('remision_proveedor_urls')?.valueChanges.subscribe(urls => {
+      if (urls && urls.length > 0) {
+        this.novedadForm.patchValue({
+          remision_proveedor: urls[0]
+        });
+      }
+    });
+
+    this.novedadForm.get('foto_estado_urls')?.valueChanges.subscribe(urls => {
+      if (urls && urls.length > 0) {
+        this.novedadForm.patchValue({
+          foto_estado: urls[0]
+        });
+      }
+    });
+
+
+    this.cargarUltimoNumeroRemision();
+
+    
+  }
+
+  validateImageCount(control: AbstractControl): ValidationErrors | null {
+    const images = control.value as string[];
+    return images.length > this.maxFiles ? { maxImagesExceeded: true } : null;
+  }
+
+  async onImagesSelected(event: any, controlName: string) {
+    const files = event.target.files;
+    if (files) {
+      const currentUrls = this.novedadForm.get(controlName)?.value || [];
+      
+      if (currentUrls.length + files.length > this.maxFiles) {
+        this.snackBar.open(`Máximo ${this.maxFiles} imágenes permitidas`, 'Cerrar', {
+          duration: 3000
+        });
+        return;
+      }
+
+      const newUrls = [];
+      for (let i = 0; i < files.length; i++) {
+        const optimizedImage = await this.optimizeImage(files[i]);
+        newUrls.push(optimizedImage);
+      }
+
+      this.novedadForm.patchValue({
+        [controlName]: [...currentUrls, ...newUrls]
+      });
+    }
+  }
+
+  get productos(): FormArray {
     return this.novedadForm.get('productos') as FormArray;
   }
 
@@ -202,35 +419,126 @@ export class NovedadesComponent implements OnInit {
       otro: [false],
       descripcion: ['', Validators.required],
       accion_realizada: ['', Validators.required],
-      foto_remision: [null]
+      foto_remision_urls: [[], [Validators.required, this.validateImageCount.bind(this)]],
+      foto_devolucion_urls: [[], [Validators.required, this.validateImageCount.bind(this)]]
     });
 
     this.productos.push(producto);
+
+    // Escuchar cambios en accion_realizada
+    const index = this.productos.length - 1;
+    this.productos.at(index).get('accion_realizada')?.valueChanges.subscribe(value => {
+      const productoGroup = this.productos.at(index) as FormGroup;
+      if (value === 'rechazado_devuelto') {
+        productoGroup.get('foto_devolucion_urls')?.setValidators([Validators.required, this.validateImageCount.bind(this)]);
+      } else {
+        productoGroup.get('foto_devolucion_urls')?.clearValidators();
+        productoGroup.get('foto_devolucion_urls')?.setValue([]);
+      }
+      productoGroup.get('foto_devolucion_urls')?.updateValueAndValidity();
+    });
   }
 
-  async onFileSelected(event: any, index: number) {
-    const file = event.target.files[0];
-    if (file) {
-      try {
-        // Verificar el tamaño del archivo
-        if (file.size > 5000000) { // 5MB
-          this.snackBar.open('La imagen es demasiado grande. Máximo 5MB', 'Cerrar', {
-            duration: 3000
-          });
-          return;
-        }
+  async onProductImageSelected(event: any, index: number, tipo: 'remision' | 'devolucion') {
+    const files = event.target.files;
+    if (!files) return;
 
-        // Optimizar la imagen antes de convertirla a base64
+    try {
+      const producto = this.productos.at(index);
+      const fieldName = tipo === 'remision' ? 'foto_remision_urls' : 'foto_devolucion_urls';
+      const currentImages = producto.get(fieldName)?.value || [];
+
+      // Verificar límite de imágenes
+      if (currentImages.length + files.length > 3) {
+        this.snackBar.open('Máximo 3 imágenes permitidas', 'Cerrar', { duration: 3000 });
+        return;
+      }
+
+      // Procesar cada imagen nueva
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         const optimizedImage = await this.optimizeImage(file);
-        const productos = this.novedadForm.get('productos') as FormArray;
-        const producto = productos.at(index);
-        producto.patchValue({ foto_remision: optimizedImage });
-      } catch (error) {
-        console.error('Error al procesar la imagen:', error);
-        this.snackBar.open('Error al procesar la imagen', 'Cerrar', {
-          duration: 3000
+        
+        currentImages.push({
+          name: file.name,
+          url: optimizedImage,
+          file: {}
         });
       }
+
+      // Actualizar el FormControl con todas las imágenes
+      producto.patchValue({
+        [fieldName]: currentImages
+      });
+
+      console.log(`Imágenes actualizadas para producto ${index}:`, producto.get(fieldName)?.value);
+    } catch (error) {
+      console.error('Error al procesar las imágenes:', error);
+      this.snackBar.open('Error al procesar las imágenes', 'Cerrar', { duration: 3000 });
+    }
+  }
+
+  private async handleImageUpload(files: FileList, currentFiles: FileItem[] = []): Promise<FileItem[]> {
+    if (currentFiles.length + files.length > this.maxFiles) {
+      this.snackBar.open(`Máximo ${this.maxFiles} imágenes permitidas`, 'Cerrar', {
+        duration: 3000
+      });
+      return currentFiles;
+    }
+
+    const newFiles: FileItem[] = [];
+    for (const file of Array.from(files)) {
+      try {
+        const optimizedImage = await this.optimizeImage(file);
+        newFiles.push({
+          name: file.name,
+          file: file,
+          url: optimizedImage
+        });
+      } catch (error) {
+        console.error('Error al procesar imagen:', error);
+      }
+    }
+
+    return [...currentFiles, ...newFiles];
+  }
+
+  async onFileSelected(event: Event, controlName: FileType | number) {
+    const files = (event.target as HTMLInputElement).files;
+    if (!files) return;
+
+    try {
+      if (typeof controlName === 'string') {
+        // Para remision_proveedor_urls y foto_estado_urls
+        const control = this.novedadForm.get(controlName);
+        if (!control) return;
+
+        const currentFiles = control.value || [];
+        const updatedFiles = await this.handleImageUpload(files, currentFiles);
+        
+        control.setValue(updatedFiles);
+        
+        // Actualizar URL principal si es necesario
+        if (updatedFiles.length > 0 && updatedFiles[0].url) {
+          if (controlName === 'remision_proveedor_urls') {
+            this.remisionProveedorUrl = updatedFiles[0].url || null;
+          } else if (controlName === 'foto_estado_urls') {
+            this.fotoEstadoUrl = updatedFiles[0].url || null;
+          } 
+        }
+      } else {
+        // Para fotos de productos
+        const producto = this.productos.at(controlName);
+        const currentFiles = producto.get('foto_remision_urls')?.value || [];
+        const updatedFiles = await this.handleImageUpload(files, currentFiles);
+        
+        producto.patchValue({
+          foto_remision_urls: updatedFiles
+        });
+      }
+    } catch (error) {
+      console.error('Error al procesar imágenes:', error);
+      this.snackBar.open('Error al procesar las imágenes', 'Cerrar', { duration: 3000 });
     }
   }
 
@@ -295,24 +603,35 @@ export class NovedadesComponent implements OnInit {
   async onSubmit() {
     if (this.novedadForm.valid) {
       try {
+        console.log('Formulario válido, generando vista previa del PDF...');
+        
+        // Preparar los datos del formulario
         const formData = {
           ...this.novedadForm.value,
-          numero_remision: this.numeroRemision
+          numeroRemision: this.numeroRemision,
+          usuario_id: this.currentUser?.id, // Asegúrate de tener el usuario actual
+          fecha: new Date(this.novedadForm.get('fecha')?.value).toISOString()
         };
 
+        console.log('Formulario preparado:', formData);
+        console.log('Generando vista previa del PDF...');
+
         const dialogRef = this.dialog.open(PreviewPdfComponent, {
-          width: '800px',
-          data: {
-            formData,
-            numeroRemision: this.numeroRemision
-          }
+          width: '90vw',
+          height: '90vh',
+          data: { formData }
         });
 
         dialogRef.afterClosed().subscribe(async result => {
+          console.log('Resultado del diálogo:', result);
+          
           if (result?.action === 'success') {
-            // Recargar el número de remisión después de crear la novedad
+            console.log('Novedad creada exitosamente');
             await this.cargarUltimoNumeroRemision();
             this.resetForm();
+          } else if (result?.action === 'modify') {
+            console.log('Usuario solicitó modificar la novedad');
+            // No es necesario hacer nada, el formulario mantiene los datos
           }
         });
       } catch (error) {
@@ -321,6 +640,10 @@ export class NovedadesComponent implements OnInit {
           duration: 3000
         });
       }
+    } else {
+      this.snackBar.open('Por favor complete todos los campos requeridos', 'Cerrar', {
+        duration: 3000
+      });
     }
   }
 
@@ -332,4 +655,320 @@ export class NovedadesComponent implements OnInit {
     // Cargar el nuevo número de remisión después de resetear
     this.cargarUltimoNumeroRemision();
   }
-} 
+
+  async onRemisionProveedorSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      try {
+        const optimizedImage = await this.optimizeImage(file);
+        this.novedadForm.patchValue({
+          remision_proveedor: optimizedImage
+        });
+        this.remisionProveedorUrl = optimizedImage;
+      } catch (error) {
+        console.error('Error al procesar la imagen de remisión:', error);
+        this.snackBar.open('Error al procesar la imagen', 'Cerrar', {
+          duration: 3000
+        });
+      }
+    }
+  }
+
+  async onFotoEstadoSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      try {
+        const optimizedImage = await this.optimizeImage(file);
+        this.novedadForm.patchValue({
+          foto_estado: optimizedImage
+        });
+        this.fotoEstadoUrl = optimizedImage;
+      } catch (error) {
+        console.error('Error al procesar la imagen del estado:', error);
+        this.snackBar.open('Error al procesar la imagen', 'Cerrar', {
+          duration: 3000
+        });
+      }
+    }
+  }
+
+  async onFotoProductoSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      try {
+        const optimizedImage = await this.optimizeImage(file);
+        this.novedadForm.patchValue({
+          foto_remision: optimizedImage
+        });
+        this.fotoEstadoUrl = optimizedImage;
+      } catch (error) {
+        console.error('Error al procesar la imagen del estado:', error);
+        this.snackBar.open('Error al procesar la imagen', 'Cerrar', {
+          duration: 3000
+        });
+      }
+    }
+  }
+
+  async onFotoDevolucionSelected(event: Event, index: number) {
+    const files = (event.target as HTMLInputElement).files;
+    if (!files) return;
+
+    try {
+      const producto = this.productos.at(index);
+      const currentFiles = producto.get('foto_devolucion_urls')?.value || [];
+      const updatedFiles = await this.handleImageUpload(files, currentFiles);
+      
+      producto.patchValue({
+        foto_devolucion_urls: updatedFiles
+      });
+    } catch (error) {
+      console.error('Error al procesar imágenes de devolución:', error);
+      this.snackBar.open('Error al procesar las imágenes', 'Cerrar', { duration: 3000 });
+    }
+  }
+
+  removeImage(controlName: string, index: number) {
+    const control = this.novedadForm.get(controlName);
+    if (control) {
+      const currentUrls = [...control.value];
+      currentUrls.splice(index, 1);
+      control.setValue(currentUrls);
+    }
+  }
+
+  onProductFileSelected(event: Event, index: number) {
+    this.handleFileUpload(event, 'product', index);
+  }
+
+  removeFile(controlName: string, index: number) {
+    const control = this.novedadForm.get(controlName);
+    if (control) {
+      const files = [...control.value];
+      files.splice(index, 1);
+      control.setValue(files);
+    }
+  }
+
+  handleFileUpload(
+    event: Event, 
+    type: 'product' | 'devolution' | 'general',
+    index?: number,
+    controlName?: FileControlName
+  ) {
+    const input = event.target as HTMLInputElement;
+    const files = input.files;
+    if (!files) return;
+
+    let control: AbstractControl | null;
+    let currentFiles: FileItem[];
+
+    if (type === 'general' && controlName) {
+      control = this.novedadForm.get(controlName);
+    } else if (index !== undefined) {
+      control = this.productos.at(index).get(
+        type === 'product' ? 'foto_remision_urls' : 'foto_devolucion_urls'
+      );
+    } else {
+      return;
+    }
+
+    if (!control) return;
+    currentFiles = control.value || [];
+
+    // Verificar límite de 3 archivos
+    if (currentFiles.length + files.length > 3) {
+      this.snackBar.open('Máximo 3 archivos permitidos', 'Cerrar', {
+        duration: 3000
+      });
+      return;
+    }
+
+    // Procesar cada archivo
+    Array.from(files).forEach(async (file) => {
+      try {
+        const optimizedImage = await this.optimizeImage(file);
+        const newFile: FileItem = {
+          name: file.name,
+          file: file,
+          url: optimizedImage
+        };
+
+        currentFiles = [...(control?.value || []), newFile];
+
+        if (type === 'general' && controlName) {
+          // Actualizar URLs principales
+          if (controlName === 'remision_proveedor_urls') {
+            this.remisionProveedorUrl = optimizedImage;
+          } else if (controlName === 'foto_estado_urls') {
+            this.fotoEstadoUrl = optimizedImage;
+          }
+          
+          this.novedadForm.patchValue({
+            [controlName]: currentFiles
+          });
+        } else if (index !== undefined) {
+          const fieldName = type === 'product' ? 'foto_remision_urls' : 'foto_devolucion_urls';
+          this.productos.at(index).patchValue({
+            [fieldName]: currentFiles.slice(0, 3) // Asegurar máximo 3 archivos
+          });
+        }
+      } catch (error) {
+        console.error('Error al procesar imagen:', error);
+        this.snackBar.open('Error al procesar la imagen', 'Cerrar', {
+          duration: 3000
+        });
+      }
+    });
+  }
+
+  removeProductFile(productoIndex: number, fileIndex: number, field: 'foto_remision_urls' | 'foto_devolucion_urls') {
+    const producto = this.productos.at(productoIndex);
+    const files = [...producto.get(field)?.value || []];
+    files.splice(fileIndex, 1);
+    producto.patchValue({ [field]: files });
+  }
+
+  // Método corregido para manejar la carga de imágenes
+  onImageUpload(event: any, tipo: string, productoIndex?: number) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        const imageData = {
+          name: file.name,
+          file: file,
+          url: e.target.result
+        };
+
+        // Si es para un producto específico
+        if (productoIndex !== undefined) {
+          const producto = this.productos.at(productoIndex);
+          
+          if (tipo === 'remision') {
+            let currentImages = JSON.parse(producto.get('foto_remision_urls')?.value || '[]');
+            if (currentImages.length >= this.maxFiles) {
+              this.snackBar.open(`Máximo ${this.maxFiles} imágenes permitidas`, 'Cerrar', { duration: 3000 });
+              return;
+            }
+            currentImages.push(imageData);
+            producto.patchValue({
+              foto_remision_urls: JSON.stringify(currentImages)
+            });
+          } else if (tipo === 'devolucion') {
+            let currentImages = JSON.parse(producto.get('foto_devolucion_urls')?.value || '[]');
+            if (currentImages.length >= this.maxFiles) {
+              this.snackBar.open(`Máximo ${this.maxFiles} imágenes permitidas`, 'Cerrar', { duration: 3000 });
+              return;
+            }
+            currentImages.push(imageData);
+            producto.patchValue({
+              foto_devolucion_urls: JSON.stringify(currentImages)
+            });
+          }
+        } else {
+          // Para imágenes de la novedad general
+          if (tipo === 'remision_proveedor') {
+            let currentImages = JSON.parse(this.novedadForm.get('remision_proveedor_urls')?.value || '[]');
+            if (currentImages.length >= this.maxFiles) {
+              this.snackBar.open(`Máximo ${this.maxFiles} imágenes permitidas`, 'Cerrar', { duration: 3000 });
+              return;
+            }
+            currentImages.push(imageData);
+            this.novedadForm.patchValue({
+              remision_proveedor_urls: JSON.stringify(currentImages)
+            });
+          } else if (tipo === 'estado') {
+            let currentImages = JSON.parse(this.novedadForm.get('foto_estado_urls')?.value || '[]');
+            if (currentImages.length >= this.maxFiles) {
+              this.snackBar.open(`Máximo ${this.maxFiles} imágenes permitidas`, 'Cerrar', { duration: 3000 });
+              return;
+            }
+            currentImages.push(imageData);
+            this.novedadForm.patchValue({
+              foto_estado_urls: JSON.stringify(currentImages)
+            });
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  // Método para enviar la novedad al backend
+  async guardarNovedad() {
+    if (this.novedadForm.valid) {
+      try {
+        // Procesar los productos y sus imágenes
+        const productosValue = this.productos.controls.map(control => {
+          const producto = control.value;
+          
+          // Asegurarse de que las URLs de imágenes estén en el formato correcto para JSONB
+          return {
+            ...producto,
+            foto_remision_urls: JSON.stringify(producto.foto_remision_urls || []),
+            foto_devolucion_urls: JSON.stringify(producto.foto_devolucion_urls || [])
+          };
+        });
+
+        // Procesar las imágenes de la novedad principal
+        const remision_proveedor_urls = this.novedadForm.get('remision_proveedor_urls')?.value?.map((img: any) => ({
+          name: img.name,
+          url: img.url,
+          file: {}
+        })) || [];
+
+        const foto_estado_urls = this.novedadForm.get('foto_estado_urls')?.value?.map((img: any) => ({
+          name: img.name,
+          url: img.url,
+          file: {}
+        })) || [];
+
+        const formData = {
+          ...this.novedadForm.value,
+          remision_proveedor_urls,
+          foto_estado_urls,
+          productos: productosValue,
+          usuario_id: this.currentUser?.id,
+          fecha: new Date(this.novedadForm.get('fecha')?.value).toISOString()
+        };
+
+        console.log('Datos a enviar:', formData);
+        const response = await this.novedadesService.create(formData).toPromise();
+        
+        if (response) {
+          this.snackBar.open('Novedad creada exitosamente', 'Cerrar', { duration: 3000 });
+          this.resetForm();
+        }
+      } catch (error) {
+        console.error('Error al guardar la novedad:', error);
+        this.snackBar.open('Error al guardar la novedad', 'Cerrar', { duration: 3000 });
+      }
+    } else {
+      this.snackBar.open('Por favor complete todos los campos requeridos', 'Cerrar', {
+        duration: 3000
+      });
+    }
+  }
+
+  async generarPreview() {
+    try {
+      const response = await this.novedadesService.generatePreviewPDF(this.novedadForm.value).toPromise();
+      
+      if (!response) {
+        throw new Error('No se recibió respuesta del servidor');
+      }
+
+      const blob = new Blob([response as BlobPart], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      this.pdfUrl = url;
+    } catch (error) {
+      console.error('Error generando preview:', error);
+      this.snackBar.open('Error al generar la vista previa del PDF', 'Cerrar', {
+        duration: 3000,
+        horizontalPosition: 'center',
+        verticalPosition: 'bottom'
+      });
+    }
+  }
+}

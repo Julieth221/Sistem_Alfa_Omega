@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Request, HttpException, HttpStatus, InternalServerErrorException, Header, Res } from '@nestjs/common';
 import { NovedadesService } from '../services/novedades.service';
-import { INovedadDto } from '../dto/producto-novedad.interface';
+import { INovedadDto, IProductoNovedadDto } from '../dto/producto-novedad.interface';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { Request as ExpressRequest } from 'express';
+import { Request as ExpressRequest, Response } from 'express';
 
 interface RequestWithUser extends ExpressRequest {
   user: {
@@ -43,6 +43,23 @@ export class NovedadesController {
       };
     } catch (error) {
       throw error;
+    }
+  }
+
+  @Post('preview')
+  @UseGuards(JwtAuthGuard)
+  @Header('Content-Type', 'application/pdf')
+  async generatePreview(@Body() novedadDto: INovedadDto, productoDto: IProductoNovedadDto[], @Res() res: Response): Promise<void> {
+    try {
+      const pdfBuffer = await this.novedadesService.generatePreviewPdf(novedadDto, productoDto);
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Length': pdfBuffer.length,
+      });
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error('Error generando preview:', error);
+      throw new InternalServerErrorException('Error al generar el PDF');
     }
   }
 } 

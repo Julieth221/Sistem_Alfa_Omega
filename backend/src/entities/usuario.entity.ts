@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToOne, JoinColumn } from 'typeorm';
+import { FirmaDigital } from './firma-digital.entity';
 
 @Entity({ schema: 'SistemNovedad', name: 'usuarios' })
 export class Usuario {
@@ -20,6 +21,9 @@ export class Usuario {
   @Column({ default: true })
   activo!: boolean;
 
+  @Column()
+  nombre_completo!: string;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
@@ -28,4 +32,8 @@ export class Usuario {
 
   @Column({ type: 'timestamp', nullable: true })
   last_login?: Date;
+
+  @OneToOne(() => FirmaDigital)
+  @JoinColumn({ name: 'id' })
+  firma_digital!: FirmaDigital;
 } 

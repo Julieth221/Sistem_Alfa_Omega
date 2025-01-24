@@ -2,6 +2,7 @@ export class NovedadEmailDto {
   to!: string;
   subject!: string;
   numeroRemision!: string;
+  numero_factura!:string;
   fecha!: Date;
   nombreUsuario!: string;
   productos!: {
@@ -18,7 +19,7 @@ export class NovedadEmailDto {
     otro?: boolean;
     descripcion?: string;
     accion_realizada?: string;
-    foto_remision?: string;
+    foto_remision_urls?: string;
   }[];
   diligenciado_por!: string;
   correo!: string;
