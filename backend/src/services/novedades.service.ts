@@ -261,17 +261,11 @@ export class NovedadesService {
                .text(`Imágenes de Remisión - Ref: ${producto.referencia}`, { underline: true });
             
             for (const imgData of producto.foto_remision_urls) {
-              if (imgData.url) {
-                const imgBuffer = Buffer.from(
-                  imgData.url.split(';base64,').pop() || '', 
-                  'base64'
-                );
-                doc.image(imgBuffer, {
+                doc.image(imgData.url, {
                   fit: [250, 250],
                   align: 'center'
                 });
-                doc.moveDown();
-              }
+                doc.moveDown(); 
             }
           }
 
@@ -282,17 +276,11 @@ export class NovedadesService {
                .text(`Imágenes de Devolución - Ref: ${producto.referencia}`, { underline: true });
             
             for (const imgData of producto.foto_devolucion_urls) {
-              if (imgData.url) {
-                const imgBuffer = Buffer.from(
-                  imgData.url.split(';base64,').pop() || '', 
-                  'base64'
-                );
-                doc.image(imgBuffer, {
+                doc.image(imgData.url, {
                   fit: [250, 250],
                   align: 'center'
                 });
                 doc.moveDown();
-              }
             }
           }
         });

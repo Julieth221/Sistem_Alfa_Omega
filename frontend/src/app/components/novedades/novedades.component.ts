@@ -40,7 +40,7 @@ interface ProductoNovedad {
   otro: boolean;
   descripcion: string;
   accion_realizada: string;
-  foto_remision?: string;
+  foto_remision_urls?: string;
   correo?: string;
 }
 
@@ -209,13 +209,13 @@ type FileType = 'product' | 'devolution' | 'general' | FileControlName;
                 <input type="file" 
                        multiple
                        accept="image/*" 
-                       (change)="onProductFileSelected($event, i)">
-                <div class="file-list" *ngIf="producto.get('foto_remision')?.value?.length">
-                  <div *ngFor="let file of producto.get('foto_remision')?.value; let fileIndex = index" 
+                       (change)="onProductImageSelected($event, i, 'remision')">
+                <div class="file-list" *ngIf="producto.get('foto_remision_urls')?.value?.length">
+                  <div *ngFor="let file of producto.get('foto_remision_urls')?.value; let fileIndex = index" 
                        class="file-item">
                     <mat-icon>insert_drive_file</mat-icon>
                     <span>{{ file.name }}</span>
-                    <button type="button" mat-icon-button (click)="removeProductFile(i, fileIndex, 'foto_remision')">
+                    <button type="button" mat-icon-button (click)="removeProductFile(i, fileIndex, 'foto_remision_urls')">
                       <mat-icon>close</mat-icon>
                     </button>
                   </div>
@@ -227,13 +227,13 @@ type FileType = 'product' | 'devolution' | 'general' | FileControlName;
                 <input type="file" 
                        multiple
                        accept="image/*" 
-                       (change)="onFotoDevolucionSelected($event, i)">
-                <div class="file-list" *ngIf="producto.get('foto_devolucion')?.value?.length">
-                  <div *ngFor="let file of producto.get('foto_devolucion')?.value; let fileIndex = index" 
+                       (change)="onProductImageSelected($event, i, 'devolucion')">
+                <div class="file-list" *ngIf="producto.get('foto_devolucion_urls')?.value?.length">
+                  <div *ngFor="let file of producto.get('foto_devolucion_urls')?.value; let fileIndex = index" 
                        class="file-item">
                     <mat-icon>insert_drive_file</mat-icon>
                     <span>{{ file.name }}</span>
-                    <button type="button" mat-icon-button (click)="removeProductFile(i, fileIndex, 'foto_devolucion')">
+                    <button type="button" mat-icon-button (click)="removeProductFile(i, fileIndex, 'foto_devolucion_urls')">
                       <mat-icon>close</mat-icon>
                     </button>
                   </div>
@@ -365,6 +365,7 @@ export class NovedadesComponent implements OnInit, OnDestroy{
       }
     });
 
+
     this.cargarUltimoNumeroRemision();
 
     
@@ -418,8 +419,8 @@ export class NovedadesComponent implements OnInit, OnDestroy{
       otro: [false],
       descripcion: ['', Validators.required],
       accion_realizada: ['', Validators.required],
-      foto_remision: [[], [Validators.required, this.validateImageCount.bind(this)]],
-      foto_devolucion: [[], this.validateImageCount.bind(this)]
+      foto_remision_urls: [[], [Validators.required, this.validateImageCount.bind(this)]],
+      foto_devolucion_urls: [[], [Validators.required, this.validateImageCount.bind(this)]]
     });
 
     this.productos.push(producto);
@@ -429,13 +430,52 @@ export class NovedadesComponent implements OnInit, OnDestroy{
     this.productos.at(index).get('accion_realizada')?.valueChanges.subscribe(value => {
       const productoGroup = this.productos.at(index) as FormGroup;
       if (value === 'rechazado_devuelto') {
-        productoGroup.get('foto_devolucion')?.setValidators([Validators.required, this.validateImageCount.bind(this)]);
+        productoGroup.get('foto_devolucion_urls')?.setValidators([Validators.required, this.validateImageCount.bind(this)]);
       } else {
-        productoGroup.get('foto_devolucion')?.clearValidators();
-        productoGroup.get('foto_devolucion')?.setValue([]);
+        productoGroup.get('foto_devolucion_urls')?.clearValidators();
+        productoGroup.get('foto_devolucion_urls')?.setValue([]);
       }
-      productoGroup.get('foto_devolucion')?.updateValueAndValidity();
+      productoGroup.get('foto_devolucion_urls')?.updateValueAndValidity();
     });
+  }
+
+  async onProductImageSelected(event: any, index: number, tipo: 'remision' | 'devolucion') {
+    const files = event.target.files;
+    if (!files) return;
+
+    try {
+      const producto = this.productos.at(index);
+      const fieldName = tipo === 'remision' ? 'foto_remision_urls' : 'foto_devolucion_urls';
+      const currentImages = producto.get(fieldName)?.value || [];
+
+      // Verificar límite de imágenes
+      if (currentImages.length + files.length > 3) {
+        this.snackBar.open('Máximo 3 imágenes permitidas', 'Cerrar', { duration: 3000 });
+        return;
+      }
+
+      // Procesar cada imagen nueva
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const optimizedImage = await this.optimizeImage(file);
+        
+        currentImages.push({
+          name: file.name,
+          url: optimizedImage,
+          file: {}
+        });
+      }
+
+      // Actualizar el FormControl con todas las imágenes
+      producto.patchValue({
+        [fieldName]: currentImages
+      });
+
+      console.log(`Imágenes actualizadas para producto ${index}:`, producto.get(fieldName)?.value);
+    } catch (error) {
+      console.error('Error al procesar las imágenes:', error);
+      this.snackBar.open('Error al procesar las imágenes', 'Cerrar', { duration: 3000 });
+    }
   }
 
   private async handleImageUpload(files: FileList, currentFiles: FileItem[] = []): Promise<FileItem[]> {
@@ -484,16 +524,16 @@ export class NovedadesComponent implements OnInit, OnDestroy{
             this.remisionProveedorUrl = updatedFiles[0].url || null;
           } else if (controlName === 'foto_estado_urls') {
             this.fotoEstadoUrl = updatedFiles[0].url || null;
-          }
+          } 
         }
       } else {
         // Para fotos de productos
         const producto = this.productos.at(controlName);
-        const currentFiles = producto.get('foto_remision')?.value || [];
+        const currentFiles = producto.get('foto_remision_urls')?.value || [];
         const updatedFiles = await this.handleImageUpload(files, currentFiles);
         
         producto.patchValue({
-          foto_remision: updatedFiles
+          foto_remision_urls: updatedFiles
         });
       }
     } catch (error) {
@@ -652,17 +692,35 @@ export class NovedadesComponent implements OnInit, OnDestroy{
     }
   }
 
+  async onFotoProductoSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      try {
+        const optimizedImage = await this.optimizeImage(file);
+        this.novedadForm.patchValue({
+          foto_remision: optimizedImage
+        });
+        this.fotoEstadoUrl = optimizedImage;
+      } catch (error) {
+        console.error('Error al procesar la imagen del estado:', error);
+        this.snackBar.open('Error al procesar la imagen', 'Cerrar', {
+          duration: 3000
+        });
+      }
+    }
+  }
+
   async onFotoDevolucionSelected(event: Event, index: number) {
     const files = (event.target as HTMLInputElement).files;
     if (!files) return;
 
     try {
       const producto = this.productos.at(index);
-      const currentFiles = producto.get('foto_devolucion')?.value || [];
+      const currentFiles = producto.get('foto_devolucion_urls')?.value || [];
       const updatedFiles = await this.handleImageUpload(files, currentFiles);
       
       producto.patchValue({
-        foto_devolucion: updatedFiles
+        foto_devolucion_urls: updatedFiles
       });
     } catch (error) {
       console.error('Error al procesar imágenes de devolución:', error);
@@ -709,7 +767,7 @@ export class NovedadesComponent implements OnInit, OnDestroy{
       control = this.novedadForm.get(controlName);
     } else if (index !== undefined) {
       control = this.productos.at(index).get(
-        type === 'product' ? 'foto_remision' : 'foto_devolucion'
+        type === 'product' ? 'foto_remision_urls' : 'foto_devolucion_urls'
       );
     } else {
       return;
@@ -750,7 +808,7 @@ export class NovedadesComponent implements OnInit, OnDestroy{
             [controlName]: currentFiles
           });
         } else if (index !== undefined) {
-          const fieldName = type === 'product' ? 'foto_remision' : 'foto_devolucion';
+          const fieldName = type === 'product' ? 'foto_remision_urls' : 'foto_devolucion_urls';
           this.productos.at(index).patchValue({
             [fieldName]: currentFiles.slice(0, 3) // Asegurar máximo 3 archivos
           });
@@ -764,7 +822,7 @@ export class NovedadesComponent implements OnInit, OnDestroy{
     });
   }
 
-  removeProductFile(productoIndex: number, fileIndex: number, field: 'foto_remision' | 'foto_devolucion') {
+  removeProductFile(productoIndex: number, fileIndex: number, field: 'foto_remision_urls' | 'foto_devolucion_urls') {
     const producto = this.productos.at(productoIndex);
     const files = [...producto.get(field)?.value || []];
     files.splice(fileIndex, 1);
@@ -839,23 +897,57 @@ export class NovedadesComponent implements OnInit, OnDestroy{
 
   // Método para enviar la novedad al backend
   async guardarNovedad() {
-    // Antes de enviar, convertir todo el objeto a JSON
-    const novedadToSend = {
-      ...this.novedadForm.value,
-      productos: this.productos.controls.map(producto => ({
-        ...producto.value,
-        foto_remision_urls: JSON.stringify(producto.get('foto_remision')?.value || []),
-        foto_devolucion_urls: JSON.stringify(producto.get('foto_devolucion')?.value || [])
-      })),
-      remision_proveedor_urls: JSON.stringify(this.novedadForm.get('remision_proveedor_urls')?.value || []),
-      foto_estado_urls: JSON.stringify(this.novedadForm.get('foto_estado_urls')?.value || [])
-    };
+    if (this.novedadForm.valid) {
+      try {
+        // Procesar los productos y sus imágenes
+        const productosValue = this.productos.controls.map(control => {
+          const producto = control.value;
+          
+          // Asegurarse de que las URLs de imágenes estén en el formato correcto para JSONB
+          return {
+            ...producto,
+            foto_remision_urls: JSON.stringify(producto.foto_remision_urls || []),
+            foto_devolucion_urls: JSON.stringify(producto.foto_devolucion_urls || [])
+          };
+        });
 
-    try {
-      const response = await this.novedadesService.create(novedadToSend).toPromise();
-      // ... resto del código
-    } catch (error) {
-      console.error('Error al guardar la novedad:', error);
+        // Procesar las imágenes de la novedad principal
+        const remision_proveedor_urls = this.novedadForm.get('remision_proveedor_urls')?.value?.map((img: any) => ({
+          name: img.name,
+          url: img.url,
+          file: {}
+        })) || [];
+
+        const foto_estado_urls = this.novedadForm.get('foto_estado_urls')?.value?.map((img: any) => ({
+          name: img.name,
+          url: img.url,
+          file: {}
+        })) || [];
+
+        const formData = {
+          ...this.novedadForm.value,
+          remision_proveedor_urls,
+          foto_estado_urls,
+          productos: productosValue,
+          usuario_id: this.currentUser?.id,
+          fecha: new Date(this.novedadForm.get('fecha')?.value).toISOString()
+        };
+
+        console.log('Datos a enviar:', formData);
+        const response = await this.novedadesService.create(formData).toPromise();
+        
+        if (response) {
+          this.snackBar.open('Novedad creada exitosamente', 'Cerrar', { duration: 3000 });
+          this.resetForm();
+        }
+      } catch (error) {
+        console.error('Error al guardar la novedad:', error);
+        this.snackBar.open('Error al guardar la novedad', 'Cerrar', { duration: 3000 });
+      }
+    } else {
+      this.snackBar.open('Por favor complete todos los campos requeridos', 'Cerrar', {
+        duration: 3000
+      });
     }
   }
 

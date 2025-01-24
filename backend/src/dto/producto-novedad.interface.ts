@@ -1,6 +1,7 @@
 export interface IImagenDto {
   name: string;
   url: string;
+  file?: any;
 }
 
 export interface IProductoNovedadDto {
@@ -17,7 +18,7 @@ export interface IProductoNovedadDto {
   otro?: boolean;
   descripcion?: string;
   accion_realizada?: 'rechazado_devuelto' | 'rechazado_descargado';
-  foto_remision_urls?: IImagenDto[];
+  foto_remision_urls: IImagenDto[];
   foto_devolucion_urls?: IImagenDto[];
   correo: string;
 } 
