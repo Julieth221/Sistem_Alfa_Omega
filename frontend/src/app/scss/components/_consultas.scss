@@ -1,0 +1,108 @@
+// Variables
+$primary-color: #1976d2;
+$accent-color: #ff4081;
+$warn-color: #f44336;
+$background-color: #fafafa;
+$text-color: rgba(0, 0, 0, 0.87);
+$border-radius: 4px;
+
+// Estilos globales
+body {
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+  background-color: $background-color;
+  color: $text-color;
+}
+
+// Estilos para los diálogos
+.mat-dialog-container {
+  padding: 24px !important;
+  border-radius: $border-radius !important;
+}
+
+// Estilos para los snackbars
+.success-snackbar {
+  background: #4caf50;
+  color: white;
+  
+  .mat-simple-snackbar-action {
+    color: white;
+  }
+}
+
+.error-snackbar {
+  background: $warn-color;
+  color: white;
+  
+  .mat-simple-snackbar-action {
+    color: white;
+  }
+}
+
+// Estilos para las tablas
+.mat-table {
+  width: 100%;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  
+  th.mat-header-cell {
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.87);
+    background: #f5f5f5;
+  }
+  
+  td.mat-cell, th.mat-header-cell {
+    padding: 12px 16px;
+  }
+}
+
+// Estilos para los formularios
+.mat-form-field {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+// Estilos para los botones
+.mat-raised-button {
+  text-transform: uppercase;
+  font-weight: 500;
+  
+  &.mat-primary {
+    background-color: $primary-color;
+  }
+  
+  &.mat-accent {
+    background-color: $accent-color;
+  }
+  
+  &.mat-warn {
+    background-color: $warn-color;
+  }
+}
+
+// Estilos responsivos
+@media (max-width: 600px) {
+  .mat-table {
+    td.mat-cell, th.mat-header-cell {
+      padding: 8px;
+    }
+  }
+  
+  .mat-dialog-container {
+    padding: 16px !important;
+  }
+}
+
+// Animaciones
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
