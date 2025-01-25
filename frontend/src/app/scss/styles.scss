@@ -5,6 +5,7 @@
 @use 'components/login';
 @use 'components/dashboard';
 @use 'components/novedades';
+@use 'components/consultas';
 
 // Estilos globales
 body {
@@ -18,3 +19,4 @@ body {
 } 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
