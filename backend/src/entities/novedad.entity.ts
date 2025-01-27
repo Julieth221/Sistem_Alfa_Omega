@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { ProductoNovedad } from './producto-novedad.entity';
 import { Usuario } from './usuario.entity';
 
+
 @Entity('novedades', { schema: 'SistemNovedad' })
 export class Novedad {
   @PrimaryGeneratedColumn()

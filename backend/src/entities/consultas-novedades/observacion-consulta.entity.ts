@@ -7,16 +7,10 @@ export class ObservacionConsulta {
   id!: number;
 
   @Column()
-  novedad_id!: number;
-
-  @Column()
-  usuario_id!: number;
-
-  @Column()
   observacion!: string;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  fecha_creacion!: Date;
+  @Column()
+  fecha!: Date;
 
   @ManyToOne(() => Novedad, novedad => novedad.observaciones_consulta)
   @JoinColumn({ name: 'novedad_id' })

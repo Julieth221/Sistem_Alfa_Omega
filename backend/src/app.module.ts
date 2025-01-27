@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseConfig } from './config/database.config';
 import { NovedadesModule } from './modules/novedades.module';
+import { ConsultasNovedadModule } from './modules/consultas-novedad.module'
 import { MailerModule } from '@nestjs-modules/mailer';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -14,6 +15,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     }),
     TypeOrmModule.forRoot(databaseConfig),
     NovedadesModule,
+    ConsultasNovedadModule,
     AuthModule,
     MailerModule.forRootAsync({
       imports: [ConfigModule],
