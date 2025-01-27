@@ -6,13 +6,13 @@ import { ConsultaNovedadDto, ObservacionConsultaDto } from '../dto/consulta-nove
 export class ConsultasNovedadesController {
   private readonly logger = new Logger(ConsultasNovedadesController.name);
 
-  constructor(private readonly novedadesService: ConsultasNovedadesService) {}
+  constructor(private readonly consultaService: ConsultasNovedadesService) {}
 
   @Get('consulta')
   async consultarNovedades(@Query() filtros: ConsultaNovedadDto) {
     this.logger.log(`Consultando novedades con filtros: ${JSON.stringify(filtros)}`);
     try {
-      const resultado = await this.novedadesService.consultarNovedades(filtros);
+      const resultado = await this.consultaService.consultarNovedades(filtros);
       this.logger.log(`Novedades encontradas: ${resultado.length}`);
       return resultado;
     } catch (error: any) {
@@ -25,7 +25,7 @@ export class ConsultasNovedadesController {
   async obtenerNovedad(@Param('id') id: number) {
     this.logger.log(`Obteniendo novedad con ID: ${id}`);
     try {
-      const novedad = await this.novedadesService.obtenerNovedad(id);
+      const novedad = await this.consultaService.obtenerNovedad(id);
       this.logger.log(`Novedad encontrada: ${JSON.stringify(novedad)}`);
       return novedad;
     } catch (error: any) {
@@ -41,7 +41,7 @@ export class ConsultasNovedadesController {
   ) {
     this.logger.log(`Agregando observación a novedad ${id}: ${JSON.stringify(datos)}`);
     try {
-      return await this.novedadesService.agregarObservacion(datos);
+      return await this.consultaService.agregarObservacion(datos);
     } catch (error: any) {
       this.logger.error(`Error al agregar observación: ${error.message}`);
       throw error;
@@ -50,11 +50,11 @@ export class ConsultasNovedadesController {
 
   @Put(':id')
   async actualizarNovedad(@Param('id') id: number, @Body() datos: any) {
-    return await this.novedadesService.actualizarNovedad(id, datos);
+    return await this.consultaService.actualizarNovedad(id, datos);
   }
 
   @Delete(':id')
   async eliminarNovedad(@Param('id') id: number) {
-    return await this.novedadesService.eliminarNovedad(id);
+    return await this.consultaService.eliminarNovedad(id);
   }
 }

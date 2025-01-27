@@ -19,7 +19,7 @@ async function bootstrap() {
     prefix: '/uploads/',
   });
 
-  app.setGlobalPrefix('api'); // Opcional: añadir prefijo global
+  // app.setGlobalPrefix('api'); // Opcional: añadir prefijo global
 
   await app.listen(3000);
   console.log(`Servidor corriendo en: http://localhost:3000`);
