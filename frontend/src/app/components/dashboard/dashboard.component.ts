@@ -26,7 +26,7 @@ import { User } from '../../models/user.model';
           </li>
           <li>
             <a routerLink="./consultas" routerLinkActive="active">
-              <i class="fas fa-search"></i> Consulta de Formatos
+              <i class="fas fa-search"></i> Consultar Novedad
             </a>
           </li>
           <ng-container *ngIf="isAdmin">

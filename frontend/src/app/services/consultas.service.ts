@@ -1,34 +1,47 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Observable, catchError } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ConsultasService {
-  private apiUrl = `${environment.apiUrl}/novedades`;
+  private apiUrl = `${environment.apiUrl}/consultas-novedades`;
 
   constructor(private http: HttpClient) {}
 
-  getNovedades(filtro?: string): Observable<any> {
+  getNovedades(remision_factura?: string): Observable<any> {
     let url = `${this.apiUrl}/consulta`;
-    if (filtro) {
-      url += `?remision_factura=${filtro}`;
+    if (remision_factura) {
+      url += `?remision_factura=${remision_factura}`;
     }
-    return this.http.get(url);
+    console.log('URL de consulta:', url);
+    return this.http.get(url).pipe(
+      catchError(error => {
+        console.error('Error en la consulta:', error);
+        throw error;
+      })
+    );
   }
 
   getNovedad(id: number): Observable<any> {
-    return this.http.get(`${this.apiUrl}/${id}`);
+    const url = `${this.apiUrl}/${id}`;
+    console.log('URL de novedad específica:', url);
+    return this.http.get(url).pipe(
+      catchError(error => {
+        console.error('Error al obtener novedad:', error);
+        throw error;
+      })
+    );
   }
 
   getProductosNovedad(novedadId: number): Observable<any> {
     return this.http.get(`${this.apiUrl}/${novedadId}/productos`);
   }
 
-  actualizarNovedad(id: number, novedad: any): Observable<any> {
-    return this.http.put(`${this.apiUrl}/${id}`, novedad);
+  actualizarNovedad(id: number, datos: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/${id}`, datos);
   }
 
   eliminarNovedad(id: number): Observable<any> {
@@ -36,7 +49,13 @@ export class ConsultasService {
   }
 
   agregarObservacion(novedadId: number, observacion: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/${novedadId}/observaciones`, { observacion });
+    const url = `${this.apiUrl}/${novedadId}/observaciones`;
+    return this.http.post(url, { observacion }).pipe(
+      catchError(error => {
+        console.error('Error al agregar observación:', error);
+        throw error;
+      })
+    );
   }
 
   getObservaciones(novedadId: number): Observable<any> {

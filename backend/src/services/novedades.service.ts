@@ -549,7 +549,7 @@ export class NovedadesService {
     }
   }
 
-  async generatePreviewPdf(novedadDto: INovedadDto, productoDto: IProductoNovedadDto): Promise<Buffer> {
+  async generatePreviewPdf(novedadDto: INovedadDto): Promise<Buffer> {
     return new Promise(async (resolve, reject) => {
       try {
         const doc = new PDFDocument({

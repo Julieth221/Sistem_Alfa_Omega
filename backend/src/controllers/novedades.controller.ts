@@ -49,9 +49,9 @@ export class NovedadesController {
   @Post('preview')
   @UseGuards(JwtAuthGuard)
   @Header('Content-Type', 'application/pdf')
-  async generatePreview(@Body() novedadDto: INovedadDto, productoDto: IProductoNovedadDto[], @Res() res: Response): Promise<void> {
+  async generatePreview(@Body() novedadDto: INovedadDto, @Res() res: Response): Promise<void> {
     try {
-      const pdfBuffer = await this.novedadesService.generatePreviewPdf(novedadDto, productoDto);
+      const pdfBuffer = await this.novedadesService.generatePreviewPdf(novedadDto);
       res.set({
         'Content-Type': 'application/pdf',
         'Content-Length': pdfBuffer.length,
