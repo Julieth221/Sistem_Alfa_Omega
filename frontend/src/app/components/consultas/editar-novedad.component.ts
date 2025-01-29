@@ -13,6 +13,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { ConfirmDialogComponent } from './confirm-dialog.component';
 
 @Component({
   selector: 'app-editar-novedad',
@@ -118,8 +119,9 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 
         <div class="productos-section">
           <h3>Productos
-            <button mat-mini-fab color="primary" type="button" (click)="agregarProducto()">
+            <button mat-raised-button color="primary" (click)="agregarProducto()">
               <mat-icon>add</mat-icon>
+              Agregar Producto
             </button>
           </h3>
 
@@ -220,13 +222,12 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
         </mat-form-field>
 
         <div class="actions">
-          <button mat-button type="button" (click)="onClose()">Cancelar</button>
-          <button mat-button type="button" color="primary" (click)="enviarCorreo()">
-            <mat-icon>email</mat-icon>
-            Enviar Correo
-          </button>
-          <button mat-raised-button color="primary" type="submit" [disabled]="!novedadForm.valid">
-            Guardar Cambios
+          <button mat-button (click)="onClose()">Cancelar</button>
+          <button mat-raised-button 
+                  color="primary" 
+                  (click)="onSubmit()"
+                  [disabled]="loading">
+            {{ loading ? 'Guardando...' : 'Guardar Cambios' }}
           </button>
         </div>
       </form>
@@ -431,6 +432,23 @@ export class EditarNovedadComponent implements OnInit {
   ngOnInit() {
     this.novedad = this.data.novedad;
     
+    if (this.novedad?.correo) {
+      this.novedadForm.patchValue({ correo: this.novedad.correo });
+    } else {
+      this.consultasService.getCorreoDefault().subscribe({
+        next: (correo) => {
+          this.novedadForm.patchValue({ correo: correo });
+        },
+        error: (error) => {
+          console.error('Error al obtener el correo por defecto:', error);
+          const primerProducto = this.novedad?.productos?.[0];
+          if (primerProducto?.correo) {
+            this.novedadForm.patchValue({ correo: primerProducto.correo });
+          }
+        }
+      });
+    }
+
     if (this.novedad) {
       this.novedadForm.patchValue({
         numero_remision: this.novedad.numero_remision,
@@ -454,21 +472,6 @@ export class EditarNovedadComponent implements OnInit {
         this.productos.push(productoGroup);
       });
     }
-
-    if (!this.novedad?.correo) {
-      this.consultasService.getCorreoDefault().subscribe({
-        next: (correo) => {
-          this.novedadForm.patchValue({ correo: correo });
-        },
-        error: (error) => {
-          console.error('Error al obtener el correo por defecto:', error);
-          const primerProducto = this.novedad?.productos?.[0];
-          if (primerProducto?.correo) {
-            this.novedadForm.patchValue({ correo: primerProducto.correo });
-          }
-        }
-      });
-    }
   }
 
   get productos() {
@@ -476,7 +479,24 @@ export class EditarNovedadComponent implements OnInit {
   }
 
   agregarProducto() {
-    const productoGroup = this.createProductoFormGroup();
+    const productoGroup = this.fb.group({
+      referencia: ['', Validators.required],
+      cantidad_m2: [false],
+      cantidad_cajas: [false],
+      cantidad_unidades: [false],
+      novedad_roturas: [false],
+      novedad_desportillado: [false],
+      novedad_golpeado: [false],
+      novedad_rayado: [false],
+      novedad_incompleto: [false],
+      novedad_loteado: [false],
+      novedad_otro: [false],
+      accion_realizada: ['', Validators.required],
+      observaciones_producto: [''],
+      foto_remision_urls: [[]],
+      foto_devolucion_urls: [[]]
+    });
+
     this.productos.push(productoGroup);
   }
 
@@ -601,50 +621,36 @@ export class EditarNovedadComponent implements OnInit {
     });
   }
 
-  enviarCorreo() {
-    this.loading = true;
-    this.onSubmit(true);
-  }
-
-  onSubmit(fromEmail: boolean = false) {
+  onSubmit() {
     if (this.novedadForm.valid) {
-      const novedadActualizada = {
-        ...this.novedadForm.value,
-        id: this.novedad.id,
-        remision_proveedor_urls: this.remisionProveedorUrls,
-        foto_estado_urls: this.fotoEstadoUrls
-      };
-
-      this.consultasService.actualizarNovedad(this.novedad.id, novedadActualizada).subscribe({
+      this.loading = true;
+      this.consultasService.actualizarNovedad(this.novedad.id, this.novedadForm.value).subscribe({
         next: () => {
-          if (fromEmail) {
-            this.consultasService.enviarCorreo(this.novedad.id).subscribe({
-              next: () => {
-                this.loading = false;
-                this.snackBar.open('Correo enviado y novedad actualizada exitosamente', 'Cerrar', {
-                  duration: 3000,
-                  panelClass: ['success-snackbar']
-                });
-                this.dialogRef.close(true);
-              },
-              error: (error: Error) => {
-                this.loading = false;
-                this.snackBar.open('Error al enviar el correo', 'Cerrar', {
-                  duration: 3000,
-                  panelClass: ['error-snackbar']
-                });
-                console.error('Error:', error);
-              }
-            });
-          } else {
-            this.snackBar.open('Novedad actualizada exitosamente', 'Cerrar', {
-              duration: 3000,
-              panelClass: ['success-snackbar']
-            });
-            this.dialogRef.close(true);
-          }
+          this.loading = false;
+          this.snackBar.open('Novedad actualizada exitosamente', 'Cerrar', {
+            duration: 3000,
+            panelClass: ['success-snackbar']
+          });
+          
+          const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+            width: '350px',
+            data: { 
+              title: 'Enviar Correo',
+              message: '¿Está seguro que desea enviar el correo?',
+              confirmText: 'Confirmar',
+              cancelText: 'Cancelar'
+            }
+          });
+
+          dialogRef.afterClosed().subscribe(result => {
+            if (result) {
+              this.handleEnvioCorreo();
+            } else {
+              this.dialogRef.close(true);
+            }
+          });
         },
-        error: (error: Error) => {
+        error: (error) => {
           this.loading = false;
           this.snackBar.open('Error al actualizar la novedad', 'Cerrar', {
             duration: 3000,
@@ -654,6 +660,28 @@ export class EditarNovedadComponent implements OnInit {
         }
       });
     }
+  }
+
+  handleEnvioCorreo() {
+    this.loading = true;
+    this.consultasService.enviarCorreo(this.novedad.id).subscribe({
+      next: () => {
+        this.loading = false;
+        this.snackBar.open('Correo enviado exitosamente', 'Cerrar', {
+          duration: 3000,
+          panelClass: ['success-snackbar']
+        });
+        this.dialogRef.close(true);
+      },
+      error: (error) => {
+        this.loading = false;
+        this.snackBar.open('Error al enviar el correo', 'Cerrar', {
+          duration: 3000,
+          panelClass: ['error-snackbar']
+        });
+        console.error('Error:', error);
+      }
+    });
   }
 
   eliminarProducto(index: number) {
