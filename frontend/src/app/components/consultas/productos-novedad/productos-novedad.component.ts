@@ -69,15 +69,23 @@ import { ImageViewerComponent } from '../image-viewer.component';
             <td mat-cell *matCellDef="let producto">{{producto.accion_realizada}}</td>
           </ng-container>
 
+          <!-- Descripción Column -->
+          <ng-container matColumnDef="descripcion">
+            <th mat-header-cell *matHeaderCellDef>Descripción</th>
+            <td mat-cell *matCellDef="let producto">{{producto.descripcion}}</td>
+          </ng-container>
+
           <!-- Fotos Remisión Column -->
           <ng-container matColumnDef="foto_remision">
             <th mat-header-cell *matHeaderCellDef>Fotos Remisión</th>
             <td mat-cell *matCellDef="let producto">
-              <div class="images-list">
-                <a *ngFor="let img of getImagenesArray(producto.foto_remision_urls)"
-                   (click)="verImagen(img)">
-                   {{img.name}}
-                </a>
+              <div class="images-grid">
+                <div *ngFor="let img of getImagenesArray(producto.foto_remision_urls)" 
+                     class="image-preview" 
+                     (click)="verImagen(img)">
+                  <img [src]="img.url" [alt]="img.name">
+                  <span class="image-name">{{img.name}}</span>
+                </div>
               </div>
             </td>
           </ng-container>
@@ -86,11 +94,13 @@ import { ImageViewerComponent } from '../image-viewer.component';
           <ng-container matColumnDef="foto_devolucion">
             <th mat-header-cell *matHeaderCellDef>Fotos Devolución</th>
             <td mat-cell *matCellDef="let producto">
-              <div class="images-list">
-                <a *ngFor="let img of getImagenesArray(producto.foto_devolucion_urls)"
-                   (click)="verImagen(img)">
-                   {{img.name}}
-                </a>
+              <div class="images-grid">
+                <div *ngFor="let img of getImagenesArray(producto.foto_devolucion_urls)" 
+                     class="image-preview" 
+                     (click)="verImagen(img)">
+                  <img [src]="img.url" [alt]="img.name">
+                  <span class="image-name">{{img.name}}</span>
+                </div>
               </div>
             </td>
           </ng-container>
@@ -143,20 +153,40 @@ import { ImageViewerComponent } from '../image-viewer.component';
       gap: 4px;
     }
 
-    .images-list {
-      display: flex;
-      flex-direction: column;
+    .images-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
       gap: 8px;
+      padding: 8px;
+    }
 
-      a {
-        color: #1976d2;
-        cursor: pointer;
-        text-decoration: underline;
+    .image-preview {
+      position: relative;
+      cursor: pointer;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      overflow: hidden;
+    }
 
-        &:hover {
-          color: #1565c0;
-        }
-      }
+    .image-preview img {
+      width: 100%;
+      height: 100px;
+      object-fit: cover;
+    }
+
+    .image-name {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 4px;
+      font-size: 12px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .actions {
@@ -184,6 +214,7 @@ export class ProductosNovedadComponent implements OnInit {
     'cantidad',
     'tipo_novedad',
     'accion_realizada',
+    'descripcion',
     'foto_remision',
     'foto_devolucion'
   ];
@@ -206,19 +237,23 @@ export class ProductosNovedadComponent implements OnInit {
       });
   }
 
-  getImagenesArray(urlsString: string): any[] {
+  getImagenesArray(urlsData: any): Array<{name: string, url: string}> {
+    if (!urlsData) return [];
+    
     try {
-      return JSON.parse(urlsString) || [];
-    } catch {
+      if (Array.isArray(urlsData)) return urlsData;
+      return JSON.parse(urlsData);
+    } catch (error) {
+      console.error('Error al parsear imágenes:', error);
       return [];
     }
   }
 
-  verImagen(imagen: any) {
+  verImagen(imagen: {url: string, name: string}) {
     this.dialog.open(ImageViewerComponent, {
       data: { imageUrl: imagen.url, imageTitle: imagen.name },
-      width: '80%',
-      maxWidth: '1200px'
+      width: '40%',
+      maxWidth: '400px'
     });
   }
 
