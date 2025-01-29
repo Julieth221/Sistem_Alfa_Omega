@@ -65,4 +65,12 @@ export class ConsultasService {
   enviarCorreo(novedadId: number): Observable<any> {
     return this.http.post(`${this.apiUrl}/${novedadId}/enviar-correo`, {});
   }
+
+  eliminarImagen(novedadId: number, tipo: string, imagenId: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/novedades/${novedadId}/imagenes/${tipo}/${imagenId}`);
+  }
+
+  getCorreoDefault(): Observable<string> {
+    return this.http.get<string>(`${this.apiUrl}/consultas/correo-default`);
+  }
 } 

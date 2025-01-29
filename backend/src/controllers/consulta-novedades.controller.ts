@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Logger, NotFoundException } from '@nestjs/common';
 import { ConsultasNovedadesService } from '../services/consulta-novedades.service';
 import { ConsultaNovedadDto, ObservacionConsultaDto } from '../dto/consulta-novedades.dto';
 
@@ -9,16 +9,9 @@ export class ConsultasNovedadesController {
   constructor(private readonly consultaService: ConsultasNovedadesService) {}
 
   @Get('consulta')
-  async consultarNovedades(@Query() filtros: ConsultaNovedadDto) {
+  async consultarNovedades(@Query() filtros: any) {
     this.logger.log(`Consultando novedades con filtros: ${JSON.stringify(filtros)}`);
-    try {
-      const resultado = await this.consultaService.consultarNovedades(filtros);
-      this.logger.log(`Novedades encontradas: ${resultado.length}`);
-      return resultado;
-    } catch (error: any) {
-      this.logger.error(`Error al consultar novedades: ${error.message}`);
-      throw error;
-    }
+    return await this.consultaService.consultarNovedades(filtros);
   }
 
   @Get(':id')
@@ -56,5 +49,11 @@ export class ConsultasNovedadesController {
   @Delete(':id')
   async eliminarNovedad(@Param('id') id: number) {
     return await this.consultaService.eliminarNovedad(id);
+  }
+
+  @Get(':id/productos')
+  async getProductosNovedad(@Param('id') id: number) {
+    this.logger.log(`Obteniendo productos para novedad ID: ${id}`);
+    return await this.consultaService.getProductosNovedad(id);
   }
 }

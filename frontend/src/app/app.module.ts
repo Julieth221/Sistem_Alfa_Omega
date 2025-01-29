@@ -3,6 +3,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { RouterModule } from '@angular/router';
 import { HttpClientModule } from '@angular/common/http';
+import { ReactiveFormsModule } from '@angular/forms';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
@@ -12,10 +13,14 @@ import { NgxExtendedPdfViewerModule } from 'ngx-extended-pdf-viewer';
 import { AppComponent } from './app.component';
 
 @NgModule({
+  declarations: [
+    AppComponent,
+  ],
   imports: [
     BrowserModule,
     BrowserAnimationsModule,
     HttpClientModule,
+    ReactiveFormsModule,
     RouterModule.forRoot([
       {
         path: 'novedades',

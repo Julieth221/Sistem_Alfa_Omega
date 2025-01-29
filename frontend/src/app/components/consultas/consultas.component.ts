@@ -38,7 +38,7 @@ import { AgregarObservacionComponent } from '../consultas/agregar-observacion.co
   ],
   template: `
     <div class="consultas-container">
-      <div class="header">
+       <div class="header">
         <h2>Consulta de Novedades</h2>
         <div class="filters">
           <mat-form-field appearance="outline">
@@ -47,15 +47,6 @@ import { AgregarObservacionComponent } from '../consultas/agregar-observacion.co
             <button mat-icon-button matSuffix (click)="limpiarFiltro()" *ngIf="filtroRemision">
               <mat-icon>close</mat-icon>
             </button>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Mostrar</mat-label>
-            <mat-select [(ngModel)]="filtroTipo" (selectionChange)="aplicarFiltro()">
-              <mat-option value="todos">Todos</mat-option>
-              <mat-option value="pendientes">Pendientes</mat-option>
-              <mat-option value="procesados">Procesados</mat-option>
-            </mat-select>
           </mat-form-field>
         </div>
       </div>
@@ -81,7 +72,7 @@ import { AgregarObservacionComponent } from '../consultas/agregar-observacion.co
 
         <!-- Trabajador -->
         <ng-container matColumnDef="trabajador">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Trabajador</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Diligenciado por</th>
           <td mat-cell *matCellDef="let row">{{row.trabajador}}</td>
         </ng-container>
 
@@ -140,13 +131,13 @@ import { AgregarObservacionComponent } from '../consultas/agregar-observacion.co
   `,
   styles: [`
     .consultas-container {
-      padding: 24px;
-      max-width: 1600px;
+      padding: 20px;
+      max-width: 1400px;
       margin: 0 auto;
     }
 
     .header {
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
 
     .filters {
@@ -161,7 +152,7 @@ import { AgregarObservacionComponent } from '../consultas/agregar-observacion.co
     }
 
     table {
-      width: 100%;
+      width: 80%;
     }
 
     .observaciones-container {
@@ -184,7 +175,7 @@ import { AgregarObservacionComponent } from '../consultas/agregar-observacion.co
     }
 
     mat-form-field {
-      width: 100%;
+      width: 80%;
       max-width: 300px;
     }
 
@@ -208,7 +199,7 @@ export class ConsultasComponent implements OnInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
   
-  dataSource: any;
+  dataSource: any[] = [];
   displayedColumns: string[] = [
     'numero_remision',
     'remision_factura',
@@ -221,7 +212,7 @@ export class ConsultasComponent implements OnInit {
   ];
 
   filtroRemision: string = '';
-  filtroTipo: string = 'todos';
+  loading: boolean = false;
 
   constructor(
     private consultasService: ConsultasService,
@@ -230,36 +221,42 @@ export class ConsultasComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.cargarDatos();
-  }
-
-  cargarDatos() {
-    this.consultasService.getNovedades(this.filtroRemision).subscribe(
-      (data: any) => {
-        // Aplicar filtro por tipo si es necesario
-        if (this.filtroTipo !== 'todos') {
-          data = data.filter((item: any) => {
-            return this.filtroTipo === 'pendientes' ? !item.procesado : item.procesado;
-          });
-        }
-        this.dataSource = data;
-        this.dataSource.paginator = this.paginator;
-        this.dataSource.sort = this.sort;
-      },
-      error => {
-        this.mostrarMensaje('Error al cargar las novedades', 'error');
-      }
-    );
+    // No cargar datos inicialmente
+    this.dataSource = [];
   }
 
   aplicarFiltro() {
-    this.cargarDatos();
+    if (!this.filtroRemision.trim()) {
+      this.snackBar.open('Por favor ingrese un número de remisión', 'Cerrar', {
+        duration: 3000
+      });
+      return;
+    }
+
+    this.loading = true;
+    this.consultasService.getNovedades(this.filtroRemision).subscribe({
+      next: (response) => {
+        this.dataSource = response;
+        this.loading = false;
+        if (response.length === 0) {
+          this.snackBar.open('No se encontraron novedades', 'Cerrar', {
+            duration: 3000
+          });
+        }
+      },
+      error: (error) => {
+        console.error('Error:', error);
+        this.loading = false;
+        this.snackBar.open('Error al buscar la novedad', 'Cerrar', {
+          duration: 3000
+        });
+      }
+    });
   }
 
   limpiarFiltro() {
     this.filtroRemision = '';
-    this.filtroTipo = 'todos';
-    this.cargarDatos();
+    this.dataSource = []; // Limpiar la tabla
   }
 
   getImagenesArray(urlsString: string): any[] {
@@ -281,26 +278,28 @@ export class ConsultasComponent implements OnInit {
   verNovedad(novedad: any) {
     const dialogRef = this.dialog.open(VerNovedadComponent, {
       data: { novedadId: novedad.id },
-      width: '90%',
-      maxWidth: '1400px'
+      width: '50%',
+      maxWidth: '1200px'
     });
 
     dialogRef.afterClosed().subscribe(() => {
-      this.cargarDatos();
+      this.aplicarFiltro();
     });
   }
 
   editarNovedad(novedad: any) {
     const dialogRef = this.dialog.open(EditarNovedadComponent, {
-      data: { novedad },
-      width: '90%',
-      maxWidth: '1400px'
+      width: '60%',
+      maxWidth: '1200px',
+      data: { novedad: novedad }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.cargarDatos();
-        this.mostrarMensaje('Novedad actualizada exitosamente', 'success');
+        this.aplicarFiltro(); // Recargar datos
+        this.snackBar.open('Novedad actualizada exitosamente', 'Cerrar', {
+          duration: 3000
+        });
       }
     });
   }
@@ -338,11 +337,15 @@ export class ConsultasComponent implements OnInit {
   eliminarNovedad(novedad: any) {
     this.consultasService.eliminarNovedad(novedad.id).subscribe(
       () => {
-        this.cargarDatos();
-        this.mostrarMensaje('Novedad eliminada exitosamente', 'success');
+        this.aplicarFiltro();
+        this.snackBar.open('Novedad eliminada exitosamente', 'Cerrar', {
+          duration: 3000
+        });
       },
       error => {
-        this.mostrarMensaje('Error al eliminar la novedad', 'error');
+        this.snackBar.open('Error al eliminar la novedad', 'Cerrar', {
+          duration: 3000
+        });
       }
     );
   }
@@ -356,21 +359,18 @@ export class ConsultasComponent implements OnInit {
       if (observacion) {
         this.consultasService.agregarObservacion(novedad.id, observacion).subscribe(
           () => {
-            this.cargarDatos();
-            this.mostrarMensaje('Observación agregada exitosamente', 'success');
+            this.aplicarFiltro();
+            this.snackBar.open('Observación agregada exitosamente', 'Cerrar', {
+              duration: 3000
+            });
           },
           error => {
-            this.mostrarMensaje('Error al agregar la observación', 'error');
+            this.snackBar.open('Error al agregar la observación', 'Cerrar', {
+              duration: 3000
+            });
           }
         );
       }
-    });
-  }
-
-  private mostrarMensaje(mensaje: string, tipo: 'success' | 'error') {
-    this.snackBar.open(mensaje, 'Cerrar', {
-      duration: 3000,
-      panelClass: tipo === 'error' ? ['error-snackbar'] : ['success-snackbar']
     });
   }
 } 
