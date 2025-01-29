@@ -265,8 +265,8 @@ export class VerNovedadComponent implements OnInit {
         imageUrl: imagen.url, 
         imageTitle: imagen.name 
       },
-      width: '80%',
-      maxWidth: '1200px'
+      width: '40%',
+      maxWidth: '400px'
     });
   }
 
