@@ -6,7 +6,8 @@ import { ConsultasNovedadModule } from './modules/consultas-novedad.module'
 import { MailerModule } from '@nestjs-modules/mailer';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { UsersModule } from './modules/users.module'
+import { UsersModule } from './modules/users.module';
+import { DatabaseModule } from './modules/database.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { UsersModule } from './modules/users.module'
     ConsultasNovedadModule,
     AuthModule,
     UsersModule,
+    DatabaseModule,
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (config: ConfigService) => ({
