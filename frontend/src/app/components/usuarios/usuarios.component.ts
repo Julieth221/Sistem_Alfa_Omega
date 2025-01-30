@@ -233,7 +233,7 @@ export class UsuariosComponent implements OnInit {
   private cargarUsuarios() {
     this.usuariosService.getUsuarios().subscribe({
       next: (usuarios: Usuario[]) => {
-        this.dataSource.data = usuarios.filter(u => u.rol !== 'ADMIN');
+        this.dataSource.data = usuarios;
       },
       error: (error: any) => {
         console.error('Error al cargar usuarios:', error);
@@ -302,31 +302,34 @@ export class UsuariosComponent implements OnInit {
   }
 
   toggleEstadoUsuario(usuario: Usuario) {
-    const mensaje = usuario.activo ? 
-      '¿Está seguro que desea desactivar este usuario?' : 
-      '¿Está seguro que desea activar este usuario?';
-
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '350px',
-      data: { message: mensaje }
+      data: { 
+        title: usuario.activo ? 'Desactivar Usuario' : 'Activar Usuario',
+        message: usuario.activo ? 
+          '¿Está seguro que desea desactivar este usuario?' : 
+          '¿Está seguro que desea activar este usuario?'
+      }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         this.usuariosService.toggleEstadoUsuario(usuario.id!, !usuario.activo).subscribe({
           next: () => {
-            this.snackBar.open('Estado del usuario actualizado', 'Cerrar', {
-              duration: 3000,
-              panelClass: ['success-snackbar']
-            });
+            this.snackBar.open(
+              `Usuario ${usuario.activo ? 'desactivado' : 'activado'} exitosamente`, 
+              'Cerrar', 
+              { duration: 3000, panelClass: ['success-snackbar'] }
+            );
             this.cargarUsuarios();
           },
           error: (error: any) => {
             console.error('Error al actualizar estado:', error);
-            this.snackBar.open('Error al actualizar estado del usuario', 'Cerrar', {
-              duration: 3000,
-              panelClass: ['error-snackbar']
-            });
+            this.snackBar.open(
+              'Error al actualizar estado del usuario', 
+              'Cerrar', 
+              { duration: 3000, panelClass: ['error-snackbar'] }
+            );
           }
         });
       }
