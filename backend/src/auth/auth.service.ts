@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { User } from '../auth/interfaces/user.interface';
 
 @Injectable()
 export class AuthService {
@@ -69,4 +70,5 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
   }
+
 } 
