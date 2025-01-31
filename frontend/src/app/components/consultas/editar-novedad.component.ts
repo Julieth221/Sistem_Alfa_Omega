@@ -147,13 +147,13 @@ import { ConfirmDialogComponent } from './confirm-dialog.component';
                 <div class="tipo-novedad-section">
                   <label class="section-label">Tipo de Novedad</label>
                   <div class="checkbox-group">
-                    <mat-checkbox formControlName="novedad_roturas">Roturas</mat-checkbox>
-                    <mat-checkbox formControlName="novedad_desportillado">Desportillado</mat-checkbox>
-                    <mat-checkbox formControlName="novedad_golpeado">Golpeado</mat-checkbox>
-                    <mat-checkbox formControlName="novedad_rayado">Rayado</mat-checkbox>
-                    <mat-checkbox formControlName="novedad_incompleto">Incompleto</mat-checkbox>
-                    <mat-checkbox formControlName="novedad_loteado">Loteado</mat-checkbox>
-                    <mat-checkbox formControlName="novedad_otro">Otro</mat-checkbox>
+                    <mat-checkbox formControlName="roturas">Roturas</mat-checkbox>
+                    <mat-checkbox formControlName="desportillado">Desportillado</mat-checkbox>
+                    <mat-checkbox formControlName="golpeado">Golpeado</mat-checkbox>
+                    <mat-checkbox formControlName="rayado">Rayado</mat-checkbox>
+                    <mat-checkbox formControlName="incompleto">Incompleto</mat-checkbox>
+                    <mat-checkbox formControlName="loteado">Loteado</mat-checkbox>
+                    <mat-checkbox formControlName="otro">Otro</mat-checkbox>
                   </div>
                 </div>
 
@@ -372,15 +372,8 @@ export class EditarNovedadComponent implements OnInit {
   remisionProveedorUrls: Array<{name: string, url: string}> = [];
   fotoEstadoUrls: Array<{name: string, url: string}> = [];
   cantidadesDisponibles: string[] = ['M2', 'Cajas', 'Unidades'];
-  tiposNovedadDisponibles = [
-    { valor: 'roturas', nombre: 'Roturas' },
-    { valor: 'desportillado', nombre: 'Desportillado' },
-    { valor: 'golpeado', nombre: 'Golpeado' },
-    { valor: 'rayado', nombre: 'Rayado' },
-    { valor: 'incompleto', nombre: 'Incompleto' },
-    { valor: 'loteado', nombre: 'Loteado' },
-    { valor: 'otro', nombre: 'Otro' }
-  ];
+  tiposNovedadDisponibles: string[] = ['Roturas', 'Desportillado', 'Glopeado', 'Rayado', 'Incompleto',
+    'Loteado', 'Otro'];
 
   constructor(
     private fb: FormBuilder,
@@ -415,13 +408,13 @@ export class EditarNovedadComponent implements OnInit {
       cantidad_m2: [producto?.cantidad_m2 || false],
       cantidad_cajas: [producto?.cantidad_cajas || false],
       cantidad_unidades: [producto?.cantidad_unidades || false],
-      novedad_roturas: [producto?.novedad_roturas || false],
-      novedad_desportillado: [producto?.novedad_desportillado || false],
-      novedad_golpeado: [producto?.novedad_golpeado || false],
-      novedad_rayado: [producto?.novedad_rayado || false],
-      novedad_incompleto: [producto?.novedad_incompleto || false],
-      novedad_loteado: [producto?.novedad_loteado || false],
-      novedad_otro: [producto?.novedad_otro || false],
+      roturas: [producto?.roturas || false],
+      desportillado: [producto?.desportillado || false],
+      golpeado: [producto?.golpeado || false],
+      rayado: [producto?.rayado || false],
+      incompleto: [producto?.incompleto || false],
+      loteado: [producto?.loteado || false],
+      otro: [producto?.otro || false],
       accion_realizada: [producto?.accion_realizada || '', Validators.required],
       descripcion: [producto?.descripcion || ''],
       foto_remision_urls: [producto.foto_remision_urls || []],
@@ -624,9 +617,10 @@ export class EditarNovedadComponent implements OnInit {
   onSubmit() {
     if (this.novedadForm.valid) {
       this.loading = true;
-      this.consultasService.actualizarNovedad(this.novedad.id, this.novedadForm.value).subscribe({
-        next: () => {
-          this.loading = false;
+      const formValue = this.novedadForm.value;
+      
+      this.consultasService.actualizarNovedad(this.novedad.id, formValue).subscribe({
+        next: (response) => {
           this.snackBar.open('Novedad actualizada exitosamente', 'Cerrar', {
             duration: 3000,
             panelClass: ['success-snackbar']
@@ -634,54 +628,45 @@ export class EditarNovedadComponent implements OnInit {
           
           const dialogRef = this.dialog.open(ConfirmDialogComponent, {
             width: '350px',
-            data: { 
+            data: {
               title: 'Enviar Correo',
-              message: '¿Está seguro que desea enviar el correo?',
-              confirmText: 'Confirmar',
-              cancelText: 'Cancelar'
+              message: '¿Desea enviar el correo con las actualizaciones?'
             }
           });
 
           dialogRef.afterClosed().subscribe(result => {
             if (result) {
-              this.handleEnvioCorreo();
+              this.consultasService.enviarCorreoActualizacion(this.novedad.id).subscribe({
+                next: () => {
+                  this.snackBar.open('Correo enviado exitosamente', 'Cerrar', {
+                    duration: 3000,
+                    panelClass: ['success-snackbar']
+                  });
+                  this.dialogRef.close(true);
+                },
+                error: (error) => {
+                  console.error('Error al enviar correo:', error);
+                  this.snackBar.open('Error al enviar correo', 'Cerrar', {
+                    duration: 3000,
+                    panelClass: ['error-snackbar']
+                  });
+                }
+              });
             } else {
               this.dialogRef.close(true);
             }
           });
         },
         error: (error) => {
-          this.loading = false;
-          this.snackBar.open('Error al actualizar la novedad', 'Cerrar', {
+          console.error('Error al actualizar novedad:', error);
+          this.snackBar.open('Error al actualizar novedad', 'Cerrar', {
             duration: 3000,
             panelClass: ['error-snackbar']
           });
-          console.error('Error:', error);
+          this.loading = false;
         }
       });
     }
-  }
-
-  handleEnvioCorreo() {
-    this.loading = true;
-    this.consultasService.enviarCorreo(this.novedad.id).subscribe({
-      next: () => {
-        this.loading = false;
-        this.snackBar.open('Correo enviado exitosamente', 'Cerrar', {
-          duration: 3000,
-          panelClass: ['success-snackbar']
-        });
-        this.dialogRef.close(true);
-      },
-      error: (error) => {
-        this.loading = false;
-        this.snackBar.open('Error al enviar el correo', 'Cerrar', {
-          duration: 3000,
-          panelClass: ['error-snackbar']
-        });
-        console.error('Error:', error);
-      }
-    });
   }
 
   eliminarProducto(index: number) {
@@ -710,11 +695,11 @@ export class EditarNovedadComponent implements OnInit {
     return tipos;
   }
 
-  getTipoNovedadText(tipos: string[]): string {
-    if (!tipos) return '';
-    return tipos.map(tipo => {
-      const found = this.tiposNovedadDisponibles.find(t => t.valor === tipo);
-      return found ? found.nombre : tipo;
-    }).join(', ');
-  }
+  // getTipoNovedadText(tipos: string[]): string {
+  //   if (!tipos) return '';
+  //   return tipos.map(tipo => {
+  //     const found = this.tiposNovedadDisponibles.find(t => t.valor === tipo);
+  //     return found ? found.nombre : tipo;
+  //   }).join(', ');
+  // }
 }
