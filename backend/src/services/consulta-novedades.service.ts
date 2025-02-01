@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not, In } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
+import { Pool } from 'pg';
 import { Novedad } from '../entities/consultas-novedades/Con-novedad.entity';
 import { ProductoNovedad } from '../entities/producto-novedad.entity';
 import { ObservacionConsulta } from '../entities/consultas-novedades/observacion-consulta.entity';
@@ -9,15 +11,20 @@ import { ConsultaNovedadDto, ObservacionConsultaDto } from '../dto/consulta-nove
 @Injectable()
 export class ConsultasNovedadesService {
   private readonly logger = new Logger(ConsultasNovedadesService.name);
+  private readonly schema: string;
 
   constructor(
+    @Inject('DATABASE_POOL') private pool: Pool,
+    private configService: ConfigService,
     @InjectRepository(Novedad)
     private novedadesRepository: Repository<Novedad>,
     @InjectRepository(ProductoNovedad)
     private productosRepository: Repository<ProductoNovedad>,
     @InjectRepository(ObservacionConsulta)
     private observacionesRepository: Repository<ObservacionConsulta>
-  ) {}
+  ) {
+    this.schema = this.configService.get('DB_SCHEMA') || 'SistemNovedad';
+  }
 
   async consultarNovedades(filtros: any) {
     this.logger.log(`Consultando novedades con filtros: ${JSON.stringify(filtros)}`);
@@ -87,12 +94,83 @@ export class ConsultasNovedadesService {
     }
   }
 
-  async agregarObservacion(datos: any) {
+  async obtenerNovedadCompleta(id: number): Promise<{ novedad: any; productos: any[] }> {
+    const novedad = await this.novedadesRepository.findOne({
+      where: { id },
+      relations: ['productos']
+    });
+
+    if (!novedad) {
+      throw new NotFoundException(`Novedad con ID ${id} no encontrada`);
+    }
+
+    return {
+      novedad,
+      productos: novedad.productos || []
+    };
+  }
+
+  async agregarObservacion(novedadId: number, observacion: string) {
+    const client = await this.pool.connect();
     try {
-      const observacion = this.observacionesRepository.create(datos);
-      return await this.observacionesRepository.save(observacion);
+      await client.query('BEGIN');
+      
+      // Verificar si ya existe una observación para esta novedad
+      const existingObservacion = await client.query(
+        `SELECT id FROM "${this.schema}"."observaciones_consulta"
+         WHERE novedad_id = $1`,
+        [novedadId]
+      );
+
+      if (existingObservacion.rows.length > 0) {
+        throw new Error('Ya existe una observación para esta novedad');
+      }
+
+      // Si no existe, crear nueva observación
+      const result = await client.query(
+        `INSERT INTO "${this.schema}"."observaciones_consulta"
+         (novedad_id, observacion, created_at, updated_at)
+         VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+         RETURNING *`,
+        [novedadId, observacion]
+      );
+
+      await client.query('COMMIT');
+      return result.rows[0];
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async obtenerObservaciones(novedadId: number) {
+    try {
+      return await this.observacionesRepository.find({
+        where: { novedad: { id: novedadId } },
+        order: { created_at: 'DESC' }
+      });
     } catch (error: any) {
-      this.logger.error(`Error al agregar observación: ${error.message}`);
+      this.logger.error(`Error al obtener observaciones: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async actualizarObservacion(id: number, observacion: string) {
+    try {
+      const observacionExistente = await this.observacionesRepository.findOne({
+        where: { id }
+      });
+
+      if (!observacionExistente) {
+        throw new Error(`Observación con ID ${id} no encontrada`);
+      }
+
+      observacionExistente.observacion = observacion;
+      return await this.observacionesRepository.save(observacionExistente);
+    } catch (error: any) {
+      this.logger.error(`Error al actualizar observación: ${error.message}`);
       throw error;
     }
   }
@@ -191,4 +269,6 @@ export class ConsultasNovedadesService {
 
     await this.novedadesRepository.remove(novedad);
   }
+
+  
 }

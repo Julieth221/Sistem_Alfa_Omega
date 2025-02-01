@@ -18,6 +18,8 @@ import { EditarNovedadComponent } from '../consultas/editar-novedad.component';
 import { VerNovedadComponent } from '../consultas/ver-novedad.component';
 import { ConfirmDialogComponent } from '../consultas/confirm-dialog.component';
 import { AgregarObservacionComponent } from '../consultas/agregar-observacion.component';
+import { MatTooltipModule } from '@angular/material/tooltip';
+
 
 @Component({
   selector: 'app-consultas',
@@ -34,7 +36,8 @@ import { AgregarObservacionComponent } from '../consultas/agregar-observacion.co
     MatSnackBarModule,
     FormsModule,
     MatFormFieldModule,
-    MatSelectModule
+    MatSelectModule,
+    MatTooltipModule
   ],
   template: `
     <div class="consultas-container">
@@ -90,12 +93,13 @@ import { AgregarObservacionComponent } from '../consultas/agregar-observacion.co
             <th mat-header-cell *matHeaderCellDef>Observaciones</th>
             <td mat-cell *matCellDef="let row">
               <div class="observaciones-container">
-                <div *ngFor="let obs of row.observaciones" class="observacion-item">
-                  <span>{{obs.observacion}}</span>
-                  <small>{{obs.created_at | date:'dd/MM/yyyy HH:mm'}}</small>
+                <div class="observacion-item" *ngIf="row.observacion">
+                  <span>{{row.observacion}}</span>
                 </div>
-                <button mat-icon-button (click)="agregarObservacion(row)" matTooltip="Agregar observación">
-                  <mat-icon>add_comment</mat-icon>
+                <button mat-icon-button 
+                        (click)="agregarObservacion(row)"
+                        [matTooltip]="row.observacion ? 'Ver/Editar observación' : 'Agregar observación'">
+                  <mat-icon>{{ row.observacion ? 'edit' : 'add_comment' }}</mat-icon>
                 </button>
               </div>
             </td>
@@ -217,7 +221,7 @@ export class ConsultasComponent implements OnInit {
   constructor(
     private consultasService: ConsultasService,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
   ) {}
 
   ngOnInit() {
@@ -236,13 +240,26 @@ export class ConsultasComponent implements OnInit {
     this.loading = true;
     this.consultasService.getNovedades(this.filtroRemision).subscribe({
       next: (response) => {
-        this.dataSource = response;
-        this.loading = false;
-        if (response.length === 0) {
+        if (response && response.length > 0) {
+          // Obtener la observación para la novedad actual
+          this.consultasService.getObservaciones(response[0].id).subscribe({
+            next: (observaciones) => {
+              response[0].observacion = observaciones && observaciones.length > 0 ? 
+                                      observaciones[0].observacion : null;
+              this.dataSource = response;
+            },
+            error: (error) => {
+              console.error('Error al obtener observación:', error);
+              this.dataSource = response;
+            }
+          });
+        } else {
+          this.dataSource = [];
           this.snackBar.open('No se encontraron novedades', 'Cerrar', {
             duration: 3000
           });
         }
+        this.loading = false;
       },
       error: (error) => {
         console.error('Error:', error);
@@ -351,25 +368,66 @@ export class ConsultasComponent implements OnInit {
   }
 
   agregarObservacion(novedad: any) {
-    const dialogRef = this.dialog.open(AgregarObservacionComponent, {
-      width: '500px'
-    });
-
-    dialogRef.afterClosed().subscribe(observacion => {
-      if (observacion) {
-        this.consultasService.agregarObservacion(novedad.id, observacion).subscribe(
-          () => {
-            this.aplicarFiltro();
-            this.snackBar.open('Observación agregada exitosamente', 'Cerrar', {
-              duration: 3000
-            });
-          },
-          error => {
-            this.snackBar.open('Error al agregar la observación', 'Cerrar', {
-              duration: 3000
-            });
+    // Primero verificamos si ya existe una observación
+    this.consultasService.getObservaciones(novedad.id).subscribe({
+      next: (observaciones) => {
+        const observacionExistente = observaciones && observaciones.length > 0 ? observaciones[0] : null;
+        
+        const dialogRef = this.dialog.open(AgregarObservacionComponent, {
+          width: '500px',
+          data: {
+            novedadId: novedad.id,
+            observacionExistente: observacionExistente
           }
-        );
+        });
+
+        dialogRef.afterClosed().subscribe(result => {
+          if (result) {
+            if (observacionExistente) {
+              // Si ya existe una observación, actualizarla
+              this.consultasService.actualizarObservacion(observacionExistente.id, result.observacion)
+                .subscribe({
+                  next: () => {
+                    novedad.observacion = result.observacion; // Actualizar la UI inmediatamente
+                    this.snackBar.open('Observación actualizada exitosamente', 'Cerrar', {
+                      duration: 3000
+                    });
+                    this.aplicarFiltro(); // Recargar datos
+                  },
+                  error: (error) => {
+                    console.error('Error al actualizar observación:', error);
+                    this.snackBar.open('Error al actualizar observación', 'Cerrar', {
+                      duration: 3000
+                    });
+                  }
+                });
+            } else {
+              // Si no existe, crear una nueva
+              this.consultasService.agregarObservacion(novedad.id, result.observacion)
+                .subscribe({
+                  next: () => {
+                    novedad.observacion = result.observacion; // Actualizar la UI inmediatamente
+                    this.snackBar.open('Observación agregada exitosamente', 'Cerrar', {
+                      duration: 3000
+                    });
+                    this.aplicarFiltro(); // Recargar datos
+                  },
+                  error: (error) => {
+                    console.error('Error al agregar observación:', error);
+                    this.snackBar.open('Error al agregar observación', 'Cerrar', {
+                      duration: 3000
+                    });
+                  }
+                });
+            }
+          }
+        });
+      },
+      error: (error) => {
+        console.error('Error al obtener observaciones:', error);
+        this.snackBar.open('Error al verificar observaciones existentes', 'Cerrar', {
+          duration: 3000
+        });
       }
     });
   }
