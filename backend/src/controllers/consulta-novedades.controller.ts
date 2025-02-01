@@ -1,12 +1,17 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Logger, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConsultasNovedadesService } from '../services/consulta-novedades.service';
 import { ConsultaNovedadDto, ObservacionConsultaDto } from '../dto/consulta-novedades.dto';
+import { NovedadesService } from '../services/novedades.service';
+import { Novedad } from '../entities/novedad.entity';
 
 @Controller('consultas-novedades')
 export class ConsultasNovedadesController {
   private readonly logger = new Logger(ConsultasNovedadesController.name);
 
-  constructor(private readonly consultaService: ConsultasNovedadesService) {}
+  constructor(
+    private readonly consultaService: ConsultasNovedadesService,
+    private readonly novedadesService: NovedadesService
+  ) {}
 
   @Get('consulta')
   async consultarNovedades(@Query() filtros: any) {
@@ -29,21 +34,43 @@ export class ConsultasNovedadesController {
 
   @Post(':id/observaciones')
   async agregarObservacion(
-    @Param('id') id: number,
+    @Param('id') novedadId: number,
     @Body() datos: ObservacionConsultaDto
   ) {
-    this.logger.log(`Agregando observación a novedad ${id}: ${JSON.stringify(datos)}`);
-    try {
-      return await this.consultaService.agregarObservacion(datos);
-    } catch (error: any) {
-      this.logger.error(`Error al agregar observación: ${error.message}`);
-      throw error;
-    }
+    this.logger.log(`Agregando observación a novedad ${novedadId}: ${JSON.stringify(datos)}`);
+    return await this.consultaService.agregarObservacion(novedadId, datos.observacion);
+  }
+
+  @Get(':id/observaciones')
+  async obtenerObservaciones(@Param('id') novedadId: number) {
+    return await this.consultaService.obtenerObservaciones(novedadId);
+  }
+
+  @Put('observaciones/:id')
+  async actualizarObservacion(
+    @Param('id') id: number,
+    @Body() datos: {observacion: string}
+  ) {
+    return await this.consultaService.actualizarObservacion(id, datos.observacion);
   }
 
   @Put(':id')
   async actualizarNovedad(@Param('id') id: number, @Body() datos: any) {
     return await this.consultaService.actualizarNovedad(id, datos);
+  }
+
+  @Post(':id/enviar-correo')
+  async enviarCorreoActualizacion(@Param('id') id: number) {
+    try {
+      await this.novedadesService.enviarCorreoNovedad(id);
+      return { message: 'Correo enviado exitosamente' };
+    } catch (error: any) {
+      this.logger.error(`Error al enviar correo para novedad ${id}: ${error.message}`);
+      throw new HttpException(
+        `Error al enviar correo: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Delete(':id')
