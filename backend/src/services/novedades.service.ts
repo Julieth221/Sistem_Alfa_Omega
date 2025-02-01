@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Novedad } from '../entities/novedad.entity';
@@ -13,6 +13,8 @@ import { resolve } from 'path';
 import { format } from 'date-fns';
 import { NotFoundException } from '@nestjs/common';
 import { width } from 'pdfkit/js/page';
+import { ConfigService } from '@nestjs/config';
+
 
 interface ImageData {
   name?: string;
@@ -23,6 +25,8 @@ type AccionRealizada = 'rechazado_devuelto' | 'rechazado_descargado';
 
 @Injectable()
 export class NovedadesService {
+  private readonly logger = new Logger(NovedadesService.name);
+
   constructor(
     @InjectRepository(Novedad)
     private novedadesRepository: Repository<Novedad>,
@@ -32,6 +36,7 @@ export class NovedadesService {
     private usuarioRepository: Repository<Usuario>,
     private dataSource: DataSource,
     private mailerService: MailerService,
+    private configService: ConfigService
   ) {}
 
   async getUltimoNumeroRemision(): Promise<string> {
@@ -64,7 +69,7 @@ export class NovedadesService {
     }
   }
 
-  private async generarPDF (novedad: Novedad, productos: ProductoNovedad[]): Promise<Buffer> {
+  public async generarPDF(novedad: Novedad, productos: ProductoNovedad[]): Promise<Buffer> {
     return new Promise(async (resolve, reject) => {
       try {
         const doc = new PDFDocument({
@@ -78,16 +83,16 @@ export class NovedadesService {
         doc.on('end', () => resolve(Buffer.concat(chunks)));
 
         // Configuración de imágenes
-      const IMAGE_CONFIG = {
-        producto: {
-          fit: [400, 300],
-          align: 'center'
-        },
-        general: {
-          fit: [500, 350],
-          align: 'center'
-        }
-      };
+        const IMAGE_CONFIG = {
+          producto: {
+            fit: [400, 300],
+            align: 'center'
+          },
+          general: {
+            fit: [500, 350],
+            align: 'center'
+          }
+        };
 
         // Título y encabezado
         doc.font('Helvetica-Bold')
@@ -549,7 +554,7 @@ export class NovedadesService {
     }
   }
 
-  async generatePreviewPdf(novedadDto: INovedadDto): Promise<Buffer> {
+  async generatePreviewPdf(novedadDto: INovedadDto, productoDto: IProductoNovedadDto[]): Promise<Buffer> {
     return new Promise(async (resolve, reject) => {
       try {
         const doc = new PDFDocument({
@@ -858,7 +863,92 @@ export class NovedadesService {
       }
     });
   } 
-  
+
+  async enviarCorreoNovedad(novedadId: number): Promise<void> {
+    try {
+      // Obtener la novedad con sus productos
+      const novedad = await this.novedadesRepository.findOne({
+        where: { id: novedadId },
+        relations: ['productos']
+      });
+
+      if (!novedad) {
+        throw new Error('Novedad no encontrada');
+      }
+
+      if (!novedad.productos?.length) {
+        throw new Error('La novedad no tiene productos asociados');
+      }
+
+      const correoDestino = novedad.productos[0]?.correo;
+      if (!correoDestino) {
+        throw new Error('No se encontró un correo válido en los productos');
+      }
+
+      // Generar PDF
+      const pdfBuffer = await this.generarPDF(novedad, novedad.productos);
+
+      // Preparar el contenido del correo
+      const mailOptions = {
+        to: correoDestino,
+        subject: 'Mercancía con Problemas en la Recepción',
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2 style="color: #016165;">Mercancía con Problemas en la Recepción</h2>
+            
+            <p>Señores ${novedad.proveedor},</p>
+            
+            <p>Cordial saludo,</p>
+            
+            <p>Por medio de la presente, nos permitimos informar que se han identificado novedades en la recepción de mercancía correspondiente a la remisión N° ${novedad.remision_factura}.</p>
+            
+            <p>Adjunto encontrarán:</p>
+            <ul>
+              <li>Documento PDF con el detalle de las novedades encontradas</li>
+              <li>Registro fotográfico de los productos afectados</li>
+            </ul>
+            
+            <p>Agradecemos su atención y quedamos atentos a sus comentarios.</p>
+            
+            <p>Cordialmente,</p>
+            <p><strong>${novedad.trabajador}</strong><br>
+            Alfa y Omega Enchapes y Acabados</p>
+          </div>
+        `,
+        context: {
+          novedad: {
+            id: novedad.id,
+            remision_factura: novedad.remision_factura,
+            fecha: novedad.fecha,
+            trabajador: novedad.trabajador,
+            proveedor: novedad.proveedor,
+            nit: novedad.nit,
+            observaciones: novedad.observaciones
+          },
+          productos: novedad.productos.map(producto => ({
+            referencia: producto.referencia,
+            accion_realizada: producto.accion_realizada,
+            descripcion: producto.descripcion
+          }))
+        },
+        attachments: [
+          {
+            filename: `novedad-${novedad.id}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf'
+          }
+        ]
+      };
+
+      // Enviar el correo
+      await this.mailerService.sendMail(mailOptions);
+      
+      this.logger.log(`Correo enviado exitosamente para la novedad ${novedadId}`);
+    } catch (error) {
+      this.logger.error(`Error al enviar correo para novedad ${novedadId}:`, error);
+      throw error;
+    }
+  }
 }
 
 
