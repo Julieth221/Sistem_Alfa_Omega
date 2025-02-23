@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, Inject, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -110,67 +110,78 @@ export class ConsultasNovedadesService {
     };
   }
 
-  async agregarObservacion(novedadId: number, observacion: string) {
-    const client = await this.pool.connect();
+  async agregarObservacion(novedadId: number, observacion: string): Promise<ObservacionConsulta> {
     try {
-      await client.query('BEGIN');
-      
-      // Verificar si ya existe una observación para esta novedad
-      const existingObservacion = await client.query(
-        `SELECT id FROM "${this.schema}"."observaciones_consulta"
-         WHERE novedad_id = $1`,
-        [novedadId]
-      );
-
-      if (existingObservacion.rows.length > 0) {
-        throw new Error('Ya existe una observación para esta novedad');
+      if (!observacion || observacion.trim() === '') {
+        throw new BadRequestException('La observación no puede estar vacía');
       }
 
-      // Si no existe, crear nueva observación
-      const result = await client.query(
-        `INSERT INTO "${this.schema}"."observaciones_consulta"
-         (novedad_id, observacion, created_at, updated_at)
-         VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-         RETURNING *`,
-        [novedadId, observacion]
-      );
-
-      await client.query('COMMIT');
-      return result.rows[0];
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  async obtenerObservaciones(novedadId: number) {
-    try {
-      return await this.observacionesRepository.find({
-        where: { novedad: { id: novedadId } },
-        order: { created_at: 'DESC' }
+      // Verificar si la novedad existe
+      const novedad = await this.novedadesRepository.findOne({
+        where: { id: novedadId }
       });
-    } catch (error: any) {
-      this.logger.error(`Error al obtener observaciones: ${error.message}`);
+
+      if (!novedad) {
+        throw new NotFoundException(`Novedad con ID ${novedadId} no encontrada`);
+      }
+
+      // Crear y guardar la observación
+      const nuevaObservacion = this.observacionesRepository.create({
+        novedad_id: novedadId,  // Asegúrate de que este campo coincida con tu entidad
+        observacion: observacion.trim(),
+        created_at: new Date(),
+        updated_at: new Date()
+      });
+
+      const observacionGuardada = await this.observacionesRepository.save(nuevaObservacion);
+      
+      this.logger.log(`Observación agregada exitosamente para novedad ${novedadId}`);
+      return observacionGuardada;
+
+    } catch (error) {
+      this.logger.error(`Error al agregar observación para novedad ${novedadId}:`, error);
       throw error;
     }
   }
 
-  async actualizarObservacion(id: number, observacion: string) {
+  async obtenerObservaciones(novedadId: number): Promise<ObservacionConsulta[]> {
     try {
+      const observaciones = await this.observacionesRepository
+        .createQueryBuilder('observacion')
+        .where('observacion.novedad_id = :novedadId', { novedadId })
+        .orderBy('observacion.created_at', 'DESC')
+        .getMany();
+
+      return observaciones;
+    } catch (error) {
+      this.logger.error(`Error al obtener observaciones para novedad ${novedadId}:`, error);
+      throw error;
+    }
+  }
+
+  async actualizarObservacion(id: number, observacion: string): Promise<ObservacionConsulta> {
+    try {
+      if (!observacion || observacion.trim() === '') {
+        throw new BadRequestException('La observación no puede estar vacía');
+      }
+
       const observacionExistente = await this.observacionesRepository.findOne({
         where: { id }
       });
 
       if (!observacionExistente) {
-        throw new Error(`Observación con ID ${id} no encontrada`);
+        throw new NotFoundException(`Observación con ID ${id} no encontrada`);
       }
 
-      observacionExistente.observacion = observacion;
-      return await this.observacionesRepository.save(observacionExistente);
-    } catch (error: any) {
-      this.logger.error(`Error al actualizar observación: ${error.message}`);
+      observacionExistente.observacion = observacion.trim();
+      observacionExistente.updated_at = new Date();
+
+      const observacionActualizada = await this.observacionesRepository.save(observacionExistente);
+      
+      this.logger.log(`Observación ${id} actualizada exitosamente`);
+      return observacionActualizada;
+    } catch (error) {
+      this.logger.error(`Error al actualizar observación ${id}:`, error);
       throw error;
     }
   }

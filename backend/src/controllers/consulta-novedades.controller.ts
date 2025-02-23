@@ -35,23 +35,67 @@ export class ConsultasNovedadesController {
   @Post(':id/observaciones')
   async agregarObservacion(
     @Param('id') novedadId: number,
-    @Body() datos: ObservacionConsultaDto
+    @Body() datos: { observacion: string }
   ) {
-    this.logger.log(`Agregando observación a novedad ${novedadId}: ${JSON.stringify(datos)}`);
-    return await this.consultaService.agregarObservacion(novedadId, datos.observacion);
+    try {
+      this.logger.log(`Agregando observación para novedad ${novedadId}`);
+      this.logger.debug('Datos recibidos:', datos);
+
+      if (!datos || !datos.observacion || datos.observacion.trim() === '') {
+        throw new HttpException('La observación no puede estar vacía', HttpStatus.BAD_REQUEST);
+      }
+
+      const resultado = await this.consultaService.agregarObservacion(
+        novedadId,
+        datos.observacion.trim()
+      );
+
+      return {
+        success: true,
+        message: 'Observación agregada exitosamente',
+        data: resultado
+      };
+
+    } catch (error: any) {
+      this.logger.error(`Error al agregar observación: ${error.message}`);
+      throw new HttpException(
+        error.message || 'Error al agregar la observación',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Get(':id/observaciones')
   async obtenerObservaciones(@Param('id') novedadId: number) {
-    return await this.consultaService.obtenerObservaciones(novedadId);
+    try {
+      return await this.consultaService.obtenerObservaciones(novedadId);
+    } catch (error: any) {
+      this.logger.error(`Error al obtener observaciones: ${error.message}`);
+      throw new HttpException(
+        `Error al obtener observaciones: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Put('observaciones/:id')
   async actualizarObservacion(
     @Param('id') id: number,
-    @Body() datos: {observacion: string}
+    @Body('observacion') observacion: string
   ) {
-    return await this.consultaService.actualizarObservacion(id, datos.observacion);
+    try {
+      if (!observacion) {
+        throw new HttpException('La observación no puede estar vacía', HttpStatus.BAD_REQUEST);
+      }
+
+      return await this.consultaService.actualizarObservacion(id, observacion);
+    } catch (error: any) {
+      this.logger.error(`Error al actualizar observación: ${error.message}`);
+      throw new HttpException(
+        `Error al actualizar observación: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Put(':id')

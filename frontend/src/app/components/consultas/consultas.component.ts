@@ -17,7 +17,7 @@ import { ProductosNovedadComponent } from '../consultas/productos-novedad/produc
 import { EditarNovedadComponent } from '../consultas/editar-novedad.component';
 import { VerNovedadComponent } from '../consultas/ver-novedad.component';
 import { ConfirmDialogComponent } from '../consultas/confirm-dialog.component';
-import { AgregarObservacionComponent } from '../consultas/agregar-observacion.component';
+import { AgregarObservacionComponent } from './agregar-observacion.component';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 
@@ -94,7 +94,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
             <td mat-cell *matCellDef="let row">
               <div class="observaciones-container">
                 <div class="observacion-item" *ngIf="row.observacion">
-                  <span>{{row.observacion}}</span>
                 </div>
                 <button mat-icon-button 
                         (click)="agregarObservacion(row)"
@@ -217,6 +216,7 @@ export class ConsultasComponent implements OnInit {
 
   filtroRemision: string = '';
   loading: boolean = false;
+  observacion: string = '';
 
   constructor(
     private consultasService: ConsultasService,
@@ -367,68 +367,37 @@ export class ConsultasComponent implements OnInit {
     );
   }
 
-  agregarObservacion(novedad: any) {
-    // Primero verificamos si ya existe una observación
-    this.consultasService.getObservaciones(novedad.id).subscribe({
-      next: (observaciones) => {
-        const observacionExistente = observaciones && observaciones.length > 0 ? observaciones[0] : null;
-        
-        const dialogRef = this.dialog.open(AgregarObservacionComponent, {
-          width: '500px',
-          data: {
-            novedadId: novedad.id,
-            observacionExistente: observacionExistente
-          }
-        });
+  async agregarObservacion(row: any) {
+    try {
+      const dialogRef = this.dialog.open(AgregarObservacionComponent, {
+        width: '500px',
+        data: {
+          novedadId: row.id,
+          observacion: row.observacion,
+          observacionId: row.observacion_id // Si tienes este dato
+        }
+      });
 
-        dialogRef.afterClosed().subscribe(result => {
-          if (result) {
-            if (observacionExistente) {
-              // Si ya existe una observación, actualizarla
-              this.consultasService.actualizarObservacion(observacionExistente.id, result.observacion)
-                .subscribe({
-                  next: () => {
-                    novedad.observacion = result.observacion; // Actualizar la UI inmediatamente
-                    this.snackBar.open('Observación actualizada exitosamente', 'Cerrar', {
-                      duration: 3000
-                    });
-                    this.aplicarFiltro(); // Recargar datos
-                  },
-                  error: (error) => {
-                    console.error('Error al actualizar observación:', error);
-                    this.snackBar.open('Error al actualizar observación', 'Cerrar', {
-                      duration: 3000
-                    });
-                  }
-                });
-            } else {
-              // Si no existe, crear una nueva
-              this.consultasService.agregarObservacion(novedad.id, result.observacion)
-                .subscribe({
-                  next: () => {
-                    novedad.observacion = result.observacion; // Actualizar la UI inmediatamente
-                    this.snackBar.open('Observación agregada exitosamente', 'Cerrar', {
-                      duration: 3000
-                    });
-                    this.aplicarFiltro(); // Recargar datos
-                  },
-                  error: (error) => {
-                    console.error('Error al agregar observación:', error);
-                    this.snackBar.open('Error al agregar observación', 'Cerrar', {
-                      duration: 3000
-                    });
-                  }
-                });
-            }
-          }
-        });
-      },
-      error: (error) => {
-        console.error('Error al obtener observaciones:', error);
-        this.snackBar.open('Error al verificar observaciones existentes', 'Cerrar', {
-          duration: 3000
-        });
+      const result = await dialogRef.afterClosed().toPromise();
+      
+      if (result) {
+        // Actualizar la fila con la nueva observación
+        row.observacion = result.observacion;
+        row.observacion_id = result.id;
+        
+        this.snackBar.open(
+          'Observación guardada exitosamente',
+          'Cerrar',
+          { duration: 3000 }
+        );
       }
-    });
+    } catch (error) {
+      console.error('Error en el diálogo de observación:', error);
+      this.snackBar.open(
+        'Error al procesar la observación',
+        'Cerrar',
+        { duration: 3000 }
+      );
+    }
   }
 } 

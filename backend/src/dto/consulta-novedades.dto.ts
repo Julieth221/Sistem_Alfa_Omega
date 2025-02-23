@@ -6,6 +6,5 @@ export class ConsultaNovedadDto {
   
   export class ObservacionConsultaDto {
     novedad_id!: number;
-    usuario_id!: number;
     observacion!: string;
   }
