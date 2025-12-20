@@ -251,7 +251,7 @@ type FileType = 'product' | 'devolution' | 'general' | FileControlName;
           <div class="datos-contacto">
             <mat-form-field>
               <mat-label>Diligenciado por</mat-label>
-              <input matInput formControlName="diligenciado_por" readonly>
+              <input matInput formControlName="trabajador" readonly>
             </mat-form-field>
 
             <mat-form-field>
@@ -312,7 +312,7 @@ export class NovedadesComponent implements OnInit, OnDestroy{
           const nombreCompleto = `${user.nombre} ${user.apellido}`;
           console.log('Actualizando diligenciado_por con:', nombreCompleto);
           this.novedadForm.patchValue({
-            diligenciado_por: nombreCompleto
+            trabajador: nombreCompleto
           });
         }
       },
@@ -337,7 +337,7 @@ export class NovedadesComponent implements OnInit, OnDestroy{
       observaciones: ['', Validators.required],
       remision_proveedor: [null, Validators.required],
       foto_estado: [null, Validators.required],
-      diligenciado_por: [{ 
+      trabajador: [{ 
         value: this.currentUser ? `${this.currentUser.nombre} ${this.currentUser.apellido}` : '', 
         disabled: true 
       }],
@@ -953,17 +953,23 @@ export class NovedadesComponent implements OnInit, OnDestroy{
 
   async generarPreview() {
     try {
-      const response = await this.novedadesService.generatePreviewPDF(this.novedadForm.value).toPromise();
-      
-      if (!response) {
-        throw new Error('No se recibió respuesta del servidor');
-      }
+      console.log('Datos a enviar:', {
+        novedadDto: this.novedadForm.value,
+        productoDto: this.productos
+      });
 
+      const response = await this.novedadesService.generatePreviewPDF({
+        novedadDto: this.novedadForm.value,
+        productoDto: this.productos
+      }).toPromise();
+
+      // Abrir el PDF en una nueva ventana
       const blob = new Blob([response as BlobPart], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       this.pdfUrl = url;
+      // window.open(url);
     } catch (error) {
-      console.error('Error generando preview:', error);
+      console.error('Error al generar preview:', error);
       this.snackBar.open('Error al generar la vista previa del PDF', 'Cerrar', {
         duration: 3000,
         horizontalPosition: 'center',

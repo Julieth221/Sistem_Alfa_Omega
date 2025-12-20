@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { ProductoNovedad } from './producto-novedad.entity';
 import { Usuario } from './usuario.entity';
+import { ObservacionConsulta } from './consultas-novedades/observacion-consulta.entity';
 
 
 @Entity('novedades', { schema: 'SistemNovedad' })
@@ -59,4 +60,6 @@ export class Novedad {
 
   @OneToMany(() => ProductoNovedad, productoNovedad => productoNovedad.novedad)
   productos!: ProductoNovedad[];
+
+
 } 

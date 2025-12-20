@@ -26,7 +26,7 @@ export class AuthMiddleware implements NestMiddleware {
         activo: decoded.activo,
         nombre_completo: decoded.nombre_completo,
         last_login: decoded.last_login,
-      } as User; // Asegúrate de que todas las propiedades necesarias estén presentes 
+      } as User; 
       next();
     } catch {
       throw new UnauthorizedException('Token inválido');

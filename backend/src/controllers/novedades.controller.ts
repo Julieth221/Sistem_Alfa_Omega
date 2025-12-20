@@ -3,6 +3,7 @@ import { NovedadesService } from '../services/novedades.service';
 import { INovedadDto, IProductoNovedadDto } from '../dto/producto-novedad.interface';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Request as ExpressRequest, Response } from 'express';
+import { Logger } from '@nestjs/common';
 
 interface RequestWithUser extends ExpressRequest {
   user: {
@@ -14,6 +15,8 @@ interface RequestWithUser extends ExpressRequest {
 
 @Controller('novedades')
 export class NovedadesController {
+  private readonly logger = new Logger(NovedadesController.name);
+
   constructor(private readonly novedadesService: NovedadesService) {}
 
   @Get('ultimo-numero')
@@ -49,9 +52,10 @@ export class NovedadesController {
   @Post('preview')
   @UseGuards(JwtAuthGuard)
   @Header('Content-Type', 'application/pdf')
-  async generatePreview(@Body() novedadDto: INovedadDto, @Res() res: Response): Promise<void> {
+  async generatePreview(@Body() data: any,productoDto:any[], @Res() res: Response): Promise<void> {
     try {
-      const pdfBuffer = await this.novedadesService.generatePreviewPdf(novedadDto);
+      this.logger.debug('Datos del producto', productoDto);
+      const pdfBuffer = await this.novedadesService.generatePreviewPdf(data, productoDto);
       res.set({
         'Content-Type': 'application/pdf',
         'Content-Length': pdfBuffer.length,

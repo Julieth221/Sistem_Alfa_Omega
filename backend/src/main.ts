@@ -15,7 +15,7 @@ async function bootstrap() {
   app.enableCors();
   
   // Configurar carpeta de archivos estáticos
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+  app.useStaticAssets(join(__dirname, '..', 'public'), {
     prefix: '/uploads/',
   });
 

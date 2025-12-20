@@ -57,7 +57,12 @@ export class ConsultasService {
   }
 
   agregarObservacion(novedadId: number, observacion: string): Observable<any> {
+    console.log('Enviando observación:', { novedadId, observacion }); // Debug
     return this.http.post(`${this.apiUrl}/consultas-novedades/${novedadId}/observaciones`, { observacion });
+  }
+
+  obtenerObservaciones(novedadId: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/consultas-novedades/${novedadId}/observaciones`);
   }
 
   actualizarObservacion(observacionId: number, observacion: string): Observable<any> {
