@@ -29,6 +29,16 @@ import { User } from '../../models/user.model';
               <i class="fas fa-search"></i> Consultar Novedad
             </a>
           </li>
+          <li>
+            <a routerLink="./registrarfactura" routerLinkActive="active">
+              <i class="fas fa-search"></i> Registrar Factura 
+            </a>
+          </li>
+          <li>
+            <a routerLink="./consultarfactura" routerLinkActive="active">
+              <i class="fas fa-search"></i> Consultar Factura
+            </a>
+          </li>
           <ng-container *ngIf="isAdmin">
             <li>
               <a routerLink="./usuarios" routerLinkActive="active">

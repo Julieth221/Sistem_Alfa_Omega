@@ -23,6 +23,16 @@ export const routes: Routes = [
           .then(m => m.ConsultasComponent)
       },
       {
+        path: 'registrarfactura',
+        loadComponent: () => import('./components/factura/registrofactura.component')
+          .then(m => m.MaterialPendienteComponent)
+      },
+      {
+        path: 'consultarfactura',
+        loadComponent: () => import('./components/factura/consultarfactura.component')
+          .then(m => m.ConsultarFacturaComponent)
+      },
+      {
         path: 'usuarios',
         loadComponent: () => import('./components/usuarios/usuarios.component')
           .then(m => m.UsuariosComponent)

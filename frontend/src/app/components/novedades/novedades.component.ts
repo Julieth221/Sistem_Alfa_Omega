@@ -288,7 +288,7 @@ export class NovedadesComponent implements OnInit, OnDestroy{
   novedadForm!: FormGroup;
   numeroRemision: string = '';
   currentUser: any;
-  firmaDigitalUrl: string = 'assets/images/firma-digital.png';
+  firmaDigitalUrl: string = 'assets/images/FirmaDigital.png';
   remisionProveedorUrl: string | null = null;
   fotoEstadoUrl: string | null = null;
   pdfUrl: string = '';

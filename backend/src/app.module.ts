@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UsersModule } from './modules/users.module';
 import { DatabaseModule } from './modules/database.module';
+import { FacturasFormularioModule } from './modules/facturas-formulario.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { DatabaseModule } from './modules/database.module';
     AuthModule,
     UsersModule,
     DatabaseModule,
+    FacturasFormularioModule,
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (config: ConfigService) => ({

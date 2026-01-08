@@ -39,7 +39,7 @@ import { FormsModule } from '@angular/forms';
       <button 
         mat-raised-button 
         color="primary" 
-        [disabled]="!observacion?.trim()"
+        [disabled]="!observacion.trim()"
         (click)="onSave()">
         Guardar
       </button>
