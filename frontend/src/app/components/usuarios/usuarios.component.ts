@@ -6,14 +6,13 @@ import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatChipsModule } from '@angular/material/chips';
+import { MatChipListbox, MatChip } from '@angular/material/chips';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../services/auth.service';
 import { UsuariosService, Usuario } from '../../services/usuarios.service';
 import { EditarUsuarioComponent } from './editar-usuario.component';
 import { ConfirmDialogComponent } from '../consultas/confirm-dialog.component';
-
 @Component({
   selector: 'app-usuarios',
   standalone: true,
@@ -25,7 +24,8 @@ import { ConfirmDialogComponent } from '../consultas/confirm-dialog.component';
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
-    MatChipsModule,
+    MatChipListbox,
+    MatChip,
     MatDialogModule,
     MatSnackBarModule
   ],
@@ -63,11 +63,11 @@ import { ConfirmDialogComponent } from '../consultas/confirm-dialog.component';
           <ng-container matColumnDef="rol">
             <th mat-header-cell *matHeaderCellDef mat-sort-header> Rol </th>
             <td mat-cell *matCellDef="let usuario">
-              <mat-chip-grid>
+              <mat-chip-listbox>
                 <mat-chip [color]="getRolColor(usuario.rol)" selected>
                   {{usuario.rol}}
                 </mat-chip>
-              </mat-chip-grid>
+              </mat-chip-listbox>
             </td>
           </ng-container>
 
@@ -75,11 +75,11 @@ import { ConfirmDialogComponent } from '../consultas/confirm-dialog.component';
           <ng-container matColumnDef="activo">
             <th mat-header-cell *matHeaderCellDef mat-sort-header> Estado </th>
             <td mat-cell *matCellDef="let usuario">
-              <mat-chip-grid>
+              <mat-chip-listbox>
                 <mat-chip [color]="usuario.activo ? 'primary' : 'warn'" selected>
                   {{usuario.activo ? 'Activo' : 'Inactivo'}}
                 </mat-chip>
-              </mat-chip-grid>
+              </mat-chip-listbox>
             </td>
           </ng-container>
 

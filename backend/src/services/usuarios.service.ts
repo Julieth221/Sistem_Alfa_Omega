@@ -1,8 +1,9 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import { Pool } from 'pg';
 import { hash, genSalt } from 'bcrypt';
 import { User } from '../auth/interfaces/user.interface';
 import { Usuario } from '../entities/usuario.entity'
+import { CreateUsuarioDto } from '../dtos/create-usuario.dto';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -30,9 +31,11 @@ export class UsuariosService {
     );
     return result.rows[0];
   }
-
-  async crearUsuario(userData: any) {
-    const { nombre, apellido, email, rol, password } = userData;
+  async crearUsuario(createUsuarioDto: CreateUsuarioDto) {
+    const { nombre, apellido, email, rol, password } = createUsuarioDto;
+    if (!password) {
+      throw new BadRequestException('La contraseña es requerida.');
+    }
     const client = await this.pool.connect();
 
     try {

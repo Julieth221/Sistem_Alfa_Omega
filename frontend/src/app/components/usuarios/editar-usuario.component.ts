@@ -131,6 +131,10 @@ export class EditarUsuarioComponent {
     if (this.usuarioForm.valid) {
       const formValue = { ...this.usuarioForm.value };
       delete formValue.confirmPassword; // Eliminar confirmPassword antes de enviar
+      // Si es un nuevo usuario, no enviar el campo 'activo', ya que tiene un valor por defecto en el backend
+      if (!this.data.usuario) {
+        delete formValue.activo;
+      }
       this.dialogRef.close(formValue);
     }
   }

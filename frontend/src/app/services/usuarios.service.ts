@@ -9,7 +9,7 @@ export interface Usuario {
     apellido: string;
     email: string;
     rol: 'ADMIN' | 'SUPERVISOR' | 'USUARIO';
-    activo: boolean;
+    activo?: boolean; // Hacer opcional
     created_at?: Date;
     updated_at?: Date;
     nombre_completo?: string;
